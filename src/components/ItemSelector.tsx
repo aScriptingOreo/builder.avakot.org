@@ -13,89 +13,89 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
   onItemSelect,
   onItemRemove,
 }) => {
+  // Wrapper functions to prevent event propagation issues
+  const handleItemSelect = (slot: keyof SelectedItems) => (item: any) => {
+    onItemSelect(slot, item);
+  };
+
+  const handleItemRemove = (slot: keyof SelectedItems) => () => {
+    onItemRemove(slot);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Armor Section */}
       <div>
-        <h3
-          className="text-lg font-semibold mb-4 text-shadow"
-          style={{ color: "var(--spirit-color)" }}
-        >
+        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-spirit">
           Armor
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <EquipmentSlot
             slotName="helm"
             slotType="armor"
             selectedItem={selectedItems.helm}
-            onItemSelect={(item) => onItemSelect("helm", item)}
-            onItemRemove={() => onItemRemove("helm")}
+            onItemSelect={handleItemSelect("helm")}
+            onItemRemove={handleItemRemove("helm")}
           />
           <EquipmentSlot
             slotName="upperbody"
             slotType="armor"
             selectedItem={selectedItems.upperBody}
-            onItemSelect={(item) => onItemSelect("upperBody", item)}
-            onItemRemove={() => onItemRemove("upperBody")}
+            onItemSelect={handleItemSelect("upperBody")}
+            onItemRemove={handleItemRemove("upperBody")}
           />
           <EquipmentSlot
             slotName="lowerbody"
             slotType="armor"
             selectedItem={selectedItems.lowerBody}
-            onItemSelect={(item) => onItemSelect("lowerBody", item)}
-            onItemRemove={() => onItemRemove("lowerBody")}
+            onItemSelect={handleItemSelect("lowerBody")}
+            onItemRemove={handleItemRemove("lowerBody")}
           />
           <EquipmentSlot
             slotName="totem"
             slotType="armor"
             selectedItem={selectedItems.totem}
-            onItemSelect={(item) => onItemSelect("totem", item)}
-            onItemRemove={() => onItemRemove("totem")}
+            onItemSelect={handleItemSelect("totem")}
+            onItemRemove={handleItemRemove("totem")}
           />
         </div>
       </div>
 
       {/* Weapons Section */}
       <div>
-        <h3
-          className="text-lg font-semibold mb-4 text-shadow"
-          style={{ color: "var(--courage-color)" }}
-        >
+        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-courage">
           Weapons
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <EquipmentSlot
             slotName="primary"
             slotType="weapon"
             selectedItem={selectedItems.primary}
-            onItemSelect={(item) => onItemSelect("primary", item)}
-            onItemRemove={() => onItemRemove("primary")}
+            onItemSelect={handleItemSelect("primary")}
+            onItemRemove={handleItemRemove("primary")}
           />
           <EquipmentSlot
             slotName="secondary"
             slotType="weapon"
             selectedItem={selectedItems.sidearm}
-            onItemSelect={(item) => onItemSelect("sidearm", item)}
-            onItemRemove={() => onItemRemove("sidearm")}
+            onItemSelect={handleItemSelect("sidearm")}
+            onItemRemove={handleItemRemove("sidearm")}
           />
         </div>
       </div>
 
       {/* Pact Section */}
       <div>
-        <h3
-          className="text-lg font-semibold mb-4 text-shadow"
-          style={{ color: "var(--grace-color)" }}
-        >
+        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-grace">
           Pact
         </h3>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1">
           <EquipmentSlot
             slotName="pact"
             slotType="pact"
             selectedItem={selectedItems.pact}
-            onItemSelect={(item) => onItemSelect("pact", item)}
-            onItemRemove={() => onItemRemove("pact")}
+            onItemSelect={handleItemSelect("pact")}
+            onItemRemove={handleItemRemove("pact")}
           />
         </div>
       </div>

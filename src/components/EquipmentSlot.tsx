@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import Modal from "./Modal";
 
 interface EquipmentItem {
   LinkusAlias: string;
@@ -29,263 +30,305 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
   onItemSelect,
   onItemRemove,
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [items, setItems] = useState<EquipmentItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchSlotItems = async () => {
-      try {
-        let query = "";
-        switch (slotName.toLowerCase()) {
-          case "helm":
-            query =
-              "{ helms { LinkusAlias DisplayName Img { Preview Icon } Slot Set Rarity } }";
-            break;
-          case "upperbody":
-            query =
-              "{ upperBodyArmor { LinkusAlias DisplayName Img { Preview Icon } Slot Set Rarity } }";
-            break;
-          case "lowerbody":
-            query =
-              "{ lowerBodyArmor { LinkusAlias DisplayName Img { Preview Icon } Slot Set Rarity } }";
-            break;
-          case "totem":
-            query =
-              "{ totems { LinkusAlias DisplayName Img { Preview Icon } Slot Set Rarity } }";
-            break;
-          case "primary":
-            query =
-              "{ primaryWeapons { LinkusAlias DisplayName Img { Preview Icon } Slot Art Rarity } }";
-            break;
-          case "secondary":
-            query =
-              "{ secondaryWeapons { LinkusAlias DisplayName Img { Preview Icon } Slot Art Rarity } }";
-            break;
-          case "pact":
-            query =
-              "{ pacts { LinkusAlias DisplayName Img { Preview Icon } } }";
-            break;
-          default:
-            return;
-        }
+  // Map slot names to GraphQL queries - Use armorsBySlot and weaponsBySlot for filtering
+  const getGraphQLQuery = (slotName: string, slotType: string) => {
+    switch (slotType) {
+      case "armor":
+        // Use armorsBySlot query with proper slot names
+        const armorSlotMap: { [key: string]: string } = {
+          helm: "Helm",
+          upperbody: "UpperBody",
+          lowerbody: "LowerBody",
+          totem: "Totem",
+        };
+        const slotFilter = armorSlotMap[slotName];
+        if (!slotFilter) return "";
+        return `{ armorsBySlot(slot: "${slotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set } }`;
 
-        const response = await fetch("/graphql", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
-        });
+      case "weapon":
+        // Use weaponsBySlot query with proper slot names
+        const weaponSlotMap: { [key: string]: string } = {
+          primary: "Primary",
+          secondary: "Sidearm",
+        };
+        const weaponSlotFilter = weaponSlotMap[slotName];
+        if (!weaponSlotFilter) return "";
+        return `{ weaponsBySlot(slot: "${weaponSlotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity } }`;
 
-        const result = await response.json();
-        if (result.data) {
-          const dataKey = Object.keys(result.data)[0];
-          setItems(result.data[dataKey] || []);
-        }
-      } catch (error) {
-        console.error(`Error fetching ${slotName} items:`, error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      case "pact":
+        return "{ pacts { LinkusAlias DisplayName LinkusMap Img { Preview Icon } } }";
 
-    fetchSlotItems();
-  }, [slotName]);
-
-  const getImageUrl = (item: EquipmentItem) => {
-    return item.Img?.Preview || item.Img?.Icon || item.Img?.Ingame || null;
-  };
-
-  const formatSlotName = (name: string) => {
-    switch (name.toLowerCase()) {
-      case "upperbody":
-        return "Upper Body";
-      case "lowerbody":
-        return "Lower Body";
       default:
-        return name.charAt(0).toUpperCase() + name.slice(1);
+        return "";
     }
   };
 
-  return (
-    <div className="equipment-slot mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <label
-          className="text-sm font-semibold"
-          style={{ color: "var(--accent-tertiary)" }}
-        >
-          {formatSlotName(slotName)}
-        </label>
-        {selectedItem && (
-          <button
-            onClick={onItemRemove}
-            className="text-xs px-2 py-1 rounded"
-            style={{
-              backgroundColor: "var(--courage-color)",
-              color: "var(--text-lightest)",
-              border: "1px solid #7a2b2c",
-            }}
-          >
-            Remove
-          </button>
-        )}
-      </div>
+  // Get display name for slots
+  const getSlotDisplayName = (slotName: string) => {
+    const displayNames = {
+      helm: "Helm",
+      upperbody: "Upper Body",
+      lowerbody: "Lower Body",
+      totem: "Totem",
+      primary: "Primary Weapon",
+      secondary: "Secondary Weapon",
+      pact: "Pact",
+    };
+    return displayNames[slotName as keyof typeof displayNames] || slotName;
+  };
 
-      <div className="relative">
-        {/* Selected Item Display */}
-        <div
-          className="card cursor-pointer min-h-[80px]"
-          onClick={() => setIsOpen(!isOpen)}
-          style={{
-            backgroundColor: selectedItem
-              ? "var(--bg-medium)"
-              : "var(--bg-dark)",
-            borderColor: selectedItem
-              ? "var(--accent-primary)"
-              : "var(--accent-subtle)",
-          }}
-        >
-          <div className="card-body py-3 px-4">
-            {selectedItem ? (
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 flex items-center justify-center rounded"
-                  style={{ backgroundColor: "var(--bg-darker)" }}
-                >
-                  {getImageUrl(selectedItem) ? (
-                    <img
-                      src={getImageUrl(selectedItem)!}
-                      alt={selectedItem.DisplayName || selectedItem.LinkusAlias}
-                      className="w-10 h-10 object-contain"
-                    />
-                  ) : (
-                    <div
-                      className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      No Image
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">
-                    {selectedItem.DisplayName || selectedItem.LinkusAlias}
-                  </div>
-                  {selectedItem.Set && (
-                    <div
-                      className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {selectedItem.Set}
-                    </div>
-                  )}
-                  {selectedItem.Art && (
-                    <div
-                      className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {selectedItem.Art}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-12">
-                <span
-                  className="text-sm"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {isLoading
-                    ? "Loading..."
-                    : `Select ${formatSlotName(slotName)}`}
-                </span>
-              </div>
-            )}
-          </div>
+  const handleSlotClick = async (e?: React.MouseEvent) => {
+    // Prevent event propagation that might cause conflicts
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    if (selectedItem || isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const query = getGraphQLQuery(slotName, slotType);
+      if (!query) {
+        throw new Error(`No query defined for slot: ${slotName}`);
+      }
+
+      console.log(
+        `EquipmentSlot: Fetching ${slotName} items with query:`,
+        query
+      );
+
+      const response = await fetch("/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      console.log(
+        `EquipmentSlot: Response status for ${slotName}:`,
+        response.status
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `EquipmentSlot: HTTP error for ${slotName}:`,
+          response.status,
+          errorText
+        );
+        throw new Error(
+          `HTTP error! status: ${response.status}, body: ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      console.log(`EquipmentSlot: GraphQL response for ${slotName}:`, result);
+
+      if (result.errors) {
+        console.error("EquipmentSlot: GraphQL errors:", result.errors);
+        throw new Error(
+          "GraphQL query failed: " +
+            result.errors.map((e: any) => e.message).join(", ")
+        );
+      }
+
+      if (result.data) {
+        const dataKey = Object.keys(result.data)[0];
+        const fetchedItems = result.data[dataKey] || [];
+
+        console.log(
+          `EquipmentSlot: Found ${fetchedItems.length} items for ${slotName}:`,
+          fetchedItems
+        );
+
+        setItems(fetchedItems);
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error(`EquipmentSlot: Error fetching ${slotName} items:`, error);
+      alert(
+        `Failed to load ${getSlotDisplayName(
+          slotName
+        )} items. Please make sure the GraphQL server is running on port 5501.`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleItemSelect = (item: EquipmentItem) => {
+    onItemSelect(item);
+    setShowModal(false);
+  };
+
+  const handleRemoveItem = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onItemRemove();
+  };
+
+  // Helper function to get the best available image
+  const getItemImage = (item: any) => {
+    if (!item.Img) return null;
+    // Prefer Preview over Icon
+    return item.Img.Preview || item.Img.Icon || null;
+  };
+
+  return (
+    <>
+      <div
+        className="equipment-slot-card"
+        style={{
+          ...(selectedItem && {
+            borderColor: "var(--yellow-shiny)",
+            backgroundColor: "rgba(209, 149, 54, 0.1)",
+          }),
+          ...(isLoading && { opacity: 0.5, cursor: "wait" }),
+          ...(!isLoading && !selectedItem && { cursor: "pointer" }),
+        }}
+        onClick={handleSlotClick}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="equipment-slot-header">
+            {getSlotDisplayName(slotName)}
+          </h3>
+          {selectedItem && (
+            <button
+              onClick={handleRemoveItem}
+              className="btn-danger"
+              style={{
+                padding: "0.25rem 0.5rem",
+                fontSize: "0.875rem",
+                minWidth: "auto",
+              }}
+              title="Remove item"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        {/* Dropdown Menu */}
-        {isOpen && !isLoading && (
-          <div
-            className="absolute top-full left-0 right-0 z-50 mt-1 card max-h-64 overflow-y-auto"
-            style={{ backgroundColor: "var(--bg-darker)" }}
-          >
-            <div className="card-body p-2">
-              {items.length === 0 ? (
+        {selectedItem ? (
+          <div className="flex items-center space-x-3">
+            {getItemImage(selectedItem) && (
+              <div
+                className="item-image-container"
+                style={{
+                  width: "3rem",
+                  height: "3rem",
+                }}
+              >
+                <img
+                  src={getItemImage(selectedItem)}
+                  alt={selectedItem.DisplayName || selectedItem.LinkusAlias}
+                  className="item-image"
+                />
+              </div>
+            )}
+            <div className="flex-1">
+              <div
+                className="item-name"
+                style={{
+                  fontSize: "1rem",
+                  marginBottom: "0.25rem",
+                  color: "var(--yellow-shiny)", // Use theme color instead of blue
+                }}
+              >
+                {selectedItem.DisplayName || selectedItem.LinkusAlias}
+              </div>
+              {(selectedItem.Set || selectedItem.Art) && (
                 <div
-                  className="text-center py-4"
+                  className="text-sm text-shadow"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  No items available
+                  {selectedItem.Set || selectedItem.Art}
                 </div>
-              ) : (
-                items.map((item) => (
-                  <div
-                    key={item.LinkusAlias}
-                    className="flex items-center gap-3 p-2 rounded cursor-pointer transition-colors"
-                    style={{
-                      backgroundColor: "transparent",
-                      border: "1px solid transparent",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        "var(--accent-subtle)";
-                      e.currentTarget.style.borderColor =
-                        "var(--accent-primary)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.borderColor = "transparent";
-                    }}
-                    onClick={() => {
-                      onItemSelect(item);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <div
-                      className="w-8 h-8 flex items-center justify-center rounded"
-                      style={{ backgroundColor: "var(--bg-dark)" }}
-                    >
-                      {getImageUrl(item) ? (
-                        <img
-                          src={getImageUrl(item)!}
-                          alt={item.DisplayName || item.LinkusAlias}
-                          className="w-6 h-6 object-contain"
-                        />
-                      ) : (
-                        <div
-                          className="text-xs"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          ?
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">
-                        {item.DisplayName || item.LinkusAlias}
-                      </div>
-                      {(item.Set || item.Art) && (
-                        <div
-                          className="text-xs"
-                          style={{ color: "var(--text-muted)" }}
-                        >
-                          {item.Set || item.Art}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
               )}
             </div>
           </div>
+        ) : (
+          <div
+            className="text-shadow"
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.875rem",
+            }}
+          >
+            {isLoading ? "Loading..." : "Click to select..."}
+          </div>
         )}
       </div>
 
-      {/* Click outside to close */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-      )}
-    </div>
+      {/* Modal - Now using the Portal component instead of inline modal */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={`Select ${getSlotDisplayName(slotName)}`}
+      >
+        {items.length === 0 ? (
+          <div
+            className="text-center py-8 text-shadow"
+            style={{ color: "var(--text-muted)" }}
+          >
+            No {getSlotDisplayName(slotName).toLowerCase()} items available.
+          </div>
+        ) : (
+          <div className="item-grid">
+            {items.map((item) => {
+              const displayName = item.DisplayName || item.LinkusAlias;
+              const itemKey =
+                item.LinkusMap || item.LinkusAlias || Math.random();
+              const itemImage = getItemImage(item);
+
+              return (
+                <div
+                  key={itemKey}
+                  className="item-card"
+                  onClick={() => handleItemSelect(item)}
+                >
+                  {/* Item Image with layered background */}
+                  <div className="item-image-container">
+                    {itemImage ? (
+                      <img
+                        src={itemImage}
+                        alt={displayName}
+                        className="item-image"
+                      />
+                    ) : (
+                      <div className="item-image-placeholder">?</div>
+                    )}
+                  </div>
+
+                  {/* Item Name */}
+                  <div
+                    className="item-name"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {displayName}
+                  </div>
+
+                  {/* Item Info */}
+                  {(item.Set || item.Art || item.Rarity) && (
+                    <div className="item-slot">
+                      {item.Set || item.Art || item.Rarity}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

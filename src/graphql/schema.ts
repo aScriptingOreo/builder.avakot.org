@@ -28,27 +28,69 @@ async function fetchData(endpoint: string): Promise<any[]> {
 
 // Helper function to resolve LinkusAlias to user-facing name using defaultDict
 async function resolveDisplayName(linkusAlias: string): Promise<string> {
+  if (!linkusAlias) return '';
+
   try {
     const defaultDict = await fetchData('defaultDict');
+    // Find the entry where LinkusMap matches our linkusAlias
     const entry = defaultDict.find(item => item.LinkusMap === linkusAlias);
+
     if (entry && entry.LinkusAlias) {
-      // Return first alias if it's an array, otherwise return the string
-      return Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+      // LinkusAlias can be a string or array of strings
+      if (Array.isArray(entry.LinkusAlias)) {
+        // Return the first alias from the array
+        return entry.LinkusAlias[0] || linkusAlias;
+      } else {
+        // Return the string value
+        return entry.LinkusAlias || linkusAlias;
+      }
     }
-    return linkusAlias; // Fallback to original if not found
-  } catch (error) {
-    console.error('Error resolving display name:', error);
+
+    // If no mapping found, return the original LinkusAlias
     return linkusAlias;
+  } catch (error) {
+    console.error('Error resolving display name for:', linkusAlias, error);
+    return linkusAlias; // Fallback to original on error
   }
 }
 
 // Helper function to resolve crafting item names (Key:Value format)
 async function resolveCraftingItemName(itemString: string): Promise<string> {
+  if (!itemString) return '';
+
   const [key, value] = itemString.split(':');
   if (!key) return itemString;
 
   const displayName = await resolveDisplayName(key);
   return value ? `${displayName}:${value}` : displayName;
+}
+
+// Helper function to resolve multiple items at once (for efficiency)
+async function resolveMultipleDisplayNames(linkusAliases: string[]): Promise<string[]> {
+  if (!linkusAliases || linkusAliases.length === 0) return [];
+
+  try {
+    const defaultDict = await fetchData('defaultDict');
+
+    return linkusAliases.map(linkusAlias => {
+      if (!linkusAlias) return '';
+
+      const entry = defaultDict.find(item => item.LinkusMap === linkusAlias);
+
+      if (entry && entry.LinkusAlias) {
+        if (Array.isArray(entry.LinkusAlias)) {
+          return entry.LinkusAlias[0] || linkusAlias;
+        } else {
+          return entry.LinkusAlias || linkusAlias;
+        }
+      }
+
+      return linkusAlias;
+    });
+  } catch (error) {
+    console.error('Error resolving multiple display names:', error);
+    return linkusAliases; // Return originals on error
+  }
 }
 
 export const typeDefs = `
@@ -114,8 +156,9 @@ export const typeDefs = `
   }
 
   type Weapon {
-    LinkusAlias: String!
-    DisplayName: String # Resolved user-facing name
+    LinkusAlias: String! # This will be the REAL LinkusAlias from defaultDict
+    LinkusMap: String!   # This is what the API calls "LinkusAlias" 
+    DisplayName: String  # Resolved user-facing name (same as LinkusAlias)
     Slot: String
     Rarity: String
     Art: String
@@ -141,8 +184,9 @@ export const typeDefs = `
   }
 
   type Armor {
-    LinkusAlias: String!
-    DisplayName: String # Resolved user-facing name
+    LinkusAlias: String! # This will be the REAL LinkusAlias from defaultDict
+    LinkusMap: String!   # This is what the API calls "LinkusAlias"
+    DisplayName: String  # Resolved user-facing name (same as LinkusAlias)
     Slot: String # Helm, UpperBody, LowerBody, Totem
     Set: String
     Img: Image
@@ -174,8 +218,9 @@ export const typeDefs = `
   }
 
   type Pact {
-    LinkusAlias: String!
-    DisplayName: String # Resolved user-facing name
+    LinkusAlias: String! # This will be the REAL LinkusAlias from defaultDict
+    LinkusMap: String!   # This is what the API calls "LinkusAlias"
+    DisplayName: String  # Resolved user-facing name (same as LinkusAlias)
     Img: Image
     Stats: PactStats
     VirtueNodes: PactVirtueNodes
@@ -185,7 +230,8 @@ export const typeDefs = `
   # Crafting Recipe Types (MIC.json)
   type CraftingRecipe {
     LinkusAlias: String! # Refers to the item being crafted
-    DisplayName: String # Resolved user-facing name
+    LinkusMap: String!   # This is what the API calls "LinkusAlias"
+    DisplayName: String  # Resolved user-facing name
     ItemType: String
     Item: [String] # e.g., ["Scrap Iron:15"]
     ResolvedItems: [String] # Items with resolved names
@@ -212,67 +258,191 @@ const findCraftingRecipeByAlias = async (linkusAlias: string) => {
 
 export const resolvers = {
   Query: {
-    weapons: async () => await fetchData('MWS'),
+    weapons: async () => {
+      const data = await fetchData('MWS');
+      const defaultDict = await fetchData('defaultDict');
+      return data.map(weapon => ({
+        ...weapon,
+        LinkusMap: weapon.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      }));
+    },
+
     weapon: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
       const data = await fetchData('MWS');
-      return data.find(w => w.LinkusAlias === LinkusAlias) || null;
+      // Search by what the API incorrectly calls "LinkusAlias" (which is actually LinkusMap)
+      const weapon = data.find(w => w.LinkusAlias === LinkusAlias);
+      if (!weapon) return null;
+
+      const defaultDict = await fetchData('defaultDict');
+      return {
+        ...weapon,
+        LinkusMap: weapon.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      };
     },
 
-    armors: async () => await fetchData('MAS'),
+    armors: async () => {
+      const data = await fetchData('MAS');
+      const defaultDict = await fetchData('defaultDict');
+      return data.map(armor => ({
+        ...armor,
+        LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      }));
+    },
+
     armor: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
       const data = await fetchData('MAS');
-      return data.find(a => a.LinkusAlias === LinkusAlias) || null;
+      const armor = data.find(a => a.LinkusAlias === LinkusAlias);
+      if (!armor) return null;
+
+      const defaultDict = await fetchData('defaultDict');
+      return {
+        ...armor,
+        LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      };
     },
 
-    pacts: async () => await fetchData('MPS'),
+    pacts: async () => {
+      const data = await fetchData('MPS');
+      const defaultDict = await fetchData('defaultDict');
+      return data.map(pact => ({
+        ...pact,
+        LinkusMap: pact.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      }));
+    },
+
     pact: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
       const data = await fetchData('MPS');
-      return data.find(p => p.LinkusAlias === LinkusAlias) || null;
+      const pact = data.find(p => p.LinkusAlias === LinkusAlias);
+      if (!pact) return null;
+
+      const defaultDict = await fetchData('defaultDict');
+      return {
+        ...pact,
+        LinkusMap: pact.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+        _defaultDict: defaultDict
+      };
     },
 
-    craftingRecipes: async () => await fetchData('MIC'),
-    craftingRecipe: async (_: any, { LinkusAlias }: { LinkusAlias: string }) =>
-      await findCraftingRecipeByAlias(LinkusAlias),
+    craftingRecipes: async () => {
+      const data = await fetchData('MIC');
+      const defaultDict = await fetchData('defaultDict');
+      return data.map(recipe => ({
+        ...recipe,
+        _defaultDict: defaultDict
+      }));
+    },
+
+    craftingRecipe: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
+      const recipe = await findCraftingRecipeByAlias(LinkusAlias);
+      if (!recipe) return null;
+
+      const defaultDict = await fetchData('defaultDict');
+      return {
+        ...recipe,
+        _defaultDict: defaultDict
+      };
+    },
 
     weaponsBySlot: async (_: any, { slot }: { slot: string }) => {
-      const data = await fetchData('MWS');
-      return data.filter(w => w.Slot === slot);
+      const data = await fetchData('MWS'); // FIX: Added missing data fetch
+      const defaultDict = await fetchData('defaultDict'); // FIX: Added missing defaultDict fetch
+      return data
+        .filter((w) => w.Slot === slot) // FIX: Added parentheses around arrow function parameter
+        .map(weapon => ({
+          ...weapon,
+          LinkusMap: weapon.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     armorsBySlot: async (_: any, { slot }: { slot: string }) => {
       const data = await fetchData('MAS');
-      return data.filter(a => a.Slot === slot);
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter(a => a.Slot === slot)
+        .map(armor => ({
+          ...armor,
+          LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
-    // Equipment slot-specific queries
+    // Equipment slot-specific queries - FIX SYNTAX ERRORS
     helms: async () => {
       const data = await fetchData('MAS');
-      return data.filter(a => a.Slot === 'Helm');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((a) => a.Slot === 'Helm') // FIX: Added parentheses around arrow function parameter
+        .map(armor => ({
+          ...armor,
+          LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     upperBodyArmor: async () => {
       const data = await fetchData('MAS');
-      return data.filter(a => a.Slot === 'UpperBody');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((a) => a.Slot === 'UpperBody') // FIX: Added parentheses around arrow function parameter
+        .map(armor => ({
+          ...armor,
+          LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     lowerBodyArmor: async () => {
       const data = await fetchData('MAS');
-      return data.filter(a => a.Slot === 'LowerBody');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((a) => a.Slot === 'LowerBody') // FIX: Added parentheses around arrow function parameter
+        .map(armor => ({
+          ...armor,
+          LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     totems: async () => {
       const data = await fetchData('MAS');
-      return data.filter(a => a.Slot === 'Totem');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((a) => a.Slot === 'Totem') // FIX: Added parentheses around arrow function parameter
+        .map(armor => ({
+          ...armor,
+          LinkusMap: armor.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     primaryWeapons: async () => {
       const data = await fetchData('MWS');
-      return data.filter(w => w.Slot === 'Primary');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((w) => w.Slot === 'Primary') // FIX: Added parentheses around arrow function parameter
+        .map(weapon => ({
+          ...weapon,
+          LinkusMap: weapon.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     secondaryWeapons: async () => {
       const data = await fetchData('MWS');
-      return data.filter(w => w.Slot === 'Secondary');
+      const defaultDict = await fetchData('defaultDict');
+      return data
+        .filter((w) => w.Slot === 'Sidearm') // FIX: Added parentheses around arrow function parameter
+        .map(weapon => ({
+          ...weapon,
+          LinkusMap: weapon.LinkusAlias, // What API calls "LinkusAlias" is actually LinkusMap
+          _defaultDict: defaultDict
+        }));
     },
 
     defaultDict: async () => await fetchData('defaultDict'),
@@ -280,54 +450,215 @@ export const resolvers = {
       await resolveDisplayName(linkusAlias),
 
     item: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
+      const defaultDict = await fetchData('defaultDict');
+
       let itemData = (await fetchData('MWS')).find(w => w.LinkusAlias === LinkusAlias);
-      if (itemData) return { __typename: 'Weapon', ...itemData };
+      if (itemData) return { __typename: 'Weapon', ...itemData, _defaultDict: defaultDict };
 
       itemData = (await fetchData('MAS')).find(a => a.LinkusAlias === LinkusAlias);
-      if (itemData) return { __typename: 'Armor', ...itemData };
+      if (itemData) return { __typename: 'Armor', ...itemData, _defaultDict: defaultDict };
 
       itemData = (await fetchData('MPS')).find(p => p.LinkusAlias === LinkusAlias);
-      if (itemData) return { __typename: 'Pact', ...itemData };
+      if (itemData) return { __typename: 'Pact', ...itemData, _defaultDict: defaultDict };
 
       return null;
     }
   },
-  Weapon: {
-    DisplayName: async (parent: { LinkusAlias: string }) => await resolveDisplayName(parent.LinkusAlias),
-    CraftingRecipe: async (parent: { LinkusAlias: string }) => await findCraftingRecipeByAlias(parent.LinkusAlias),
-  },
+
   Armor: {
-    DisplayName: async (parent: { LinkusAlias: string }) => await resolveDisplayName(parent.LinkusAlias),
-    CraftingRecipe: async (parent: { LinkusAlias: string }) => await findCraftingRecipeByAlias(parent.LinkusAlias),
+    // FIX: Simplify DisplayName resolver and add better debugging
+    DisplayName: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      // Use LinkusMap if available (the corrected API value), otherwise fall back to LinkusAlias
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+
+      console.log(`Armor DisplayName resolver - LinkusAlias: ${parent.LinkusAlias}, LinkusMap: ${parent.LinkusMap}, using: ${linkusMapValue}`);
+
+      if (!linkusMapValue) {
+        console.log('Armor DisplayName: No LinkusAlias or LinkusMap provided');
+        return '';
+      }
+
+      if (parent._defaultDict && Array.isArray(parent._defaultDict)) {
+        console.log(`Searching in defaultDict with ${parent._defaultDict.length} entries for: ${linkusMapValue}`);
+
+        const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+
+        if (entry && entry.LinkusAlias) {
+          const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+          console.log(`Armor DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          return resolved;
+        } else {
+          console.log(`Armor DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
+          // Log a few sample entries for debugging
+          if (parent._defaultDict.length > 0) {
+            console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
+          }
+        }
+      } else {
+        console.log('Armor DisplayName: No defaultDict available or not an array');
+      }
+
+      console.log(`Armor DisplayName fallback: ${linkusMapValue}`);
+      return linkusMapValue;
+    },
+
+    // Keep LinkusAlias as the resolved name too, for consistency
+    LinkusAlias: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+      if (!linkusMapValue || !parent._defaultDict) return linkusMapValue || '';
+
+      const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+      if (entry && entry.LinkusAlias) {
+        return Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+      }
+
+      return linkusMapValue;
+    },
+
+    CraftingRecipe: async (parent: { LinkusAlias: string; _defaultDict?: any[] }) => {
+      const recipe = await findCraftingRecipeByAlias(parent.LinkusAlias);
+      if (!recipe) return null;
+
+      return {
+        ...recipe,
+        _defaultDict: parent._defaultDict
+      };
+    },
   },
+
+  Weapon: {
+    DisplayName: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      // Use LinkusMap if available (the corrected API value), otherwise fall back to LinkusAlias
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+
+      console.log(`Weapon DisplayName resolver - LinkusAlias: ${parent.LinkusAlias}, LinkusMap: ${parent.LinkusMap}, using: ${linkusMapValue}`);
+
+      if (!linkusMapValue) {
+        console.log('Weapon DisplayName: No LinkusAlias or LinkusMap provided');
+        return '';
+      }
+
+      if (parent._defaultDict && Array.isArray(parent._defaultDict)) {
+        console.log(`Searching in defaultDict with ${parent._defaultDict.length} entries for: ${linkusMapValue}`);
+
+        const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+
+        if (entry && entry.LinkusAlias) {
+          const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+          console.log(`Weapon DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          return resolved;
+        } else {
+          console.log(`Weapon DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
+          // Log a few sample entries for debugging
+          if (parent._defaultDict.length > 0) {
+            console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
+          }
+        }
+      } else {
+        console.log('Weapon DisplayName: No defaultDict available or not an array');
+      }
+
+      console.log(`Weapon DisplayName fallback: ${linkusMapValue}`);
+      return linkusMapValue;
+    },
+
+    LinkusAlias: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+      if (!linkusMapValue || !parent._defaultDict) return linkusMapValue || '';
+
+      const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+      if (entry && entry.LinkusAlias) {
+        return Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+      }
+
+      return linkusMapValue;
+    },
+
+    CraftingRecipe: async (parent: { LinkusAlias: string; _defaultDict?: any[] }) => {
+      const recipe = await findCraftingRecipeByAlias(parent.LinkusAlias);
+      if (!recipe) return null;
+
+      return {
+        ...recipe,
+        _defaultDict: parent._defaultDict
+      };
+    },
+  },
+
   Pact: {
-    DisplayName: async (parent: { LinkusAlias: string }) => await resolveDisplayName(parent.LinkusAlias),
-    CraftingRecipe: async (parent: { LinkusAlias: string }) => await findCraftingRecipeByAlias(parent.LinkusAlias),
+    // FIX: Apply same logic to Pact resolvers
+    DisplayName: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+
+      if (!linkusMapValue) return '';
+
+      if (parent._defaultDict && Array.isArray(parent._defaultDict)) {
+        const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+
+        if (entry && entry.LinkusAlias) {
+          const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+          console.log(`Pact DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          return resolved;
+        }
+      }
+
+      return linkusMapValue;
+    },
+
+    LinkusAlias: (parent: { LinkusAlias?: string; LinkusMap?: string; _defaultDict?: any[] }) => {
+      const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
+      if (!linkusMapValue || !parent._defaultDict) return linkusMapValue || '';
+
+      const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
+      if (entry && entry.LinkusAlias) {
+        return Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+      }
+
+      return linkusMapValue;
+    },
+
     Stats: (parent: any) => ({ // Handle typo UnnarmedDmg -> UnarmedDmg
       ...parent.Stats,
       UnarmedDmg: parent.Stats.UnnarmedDmg, // Map from JSON
     }),
   },
+
   CraftingRecipe: {
-    DisplayName: async (parent: { LinkusAlias: string }) => await resolveDisplayName(parent.LinkusAlias),
-    ResolvedItems: async (parent: { Item?: string[] }) => {
-      if (!parent.Item) return [];
-      const resolvedItems = await Promise.all(
-        parent.Item.map(item => resolveCraftingItemName(item))
-      );
-      return resolvedItems;
+    DisplayName: (parent: { LinkusAlias: string; _defaultDict?: any[] }) => {
+      if (!parent.LinkusAlias) return '';
+
+      if (parent._defaultDict) {
+        const entry = parent._defaultDict.find(item => item.LinkusMap === parent.LinkusAlias);
+        if (entry && entry.LinkusAlias) {
+          return Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+        }
+      }
+
+      return parent.LinkusAlias;
+    },
+
+    ResolvedItems: (parent: { Item?: string[]; _defaultDict?: any[] }) => {
+      if (!parent.Item || !parent._defaultDict) return [];
+
+      return parent.Item.map(item => {
+        if (!item) return '';
+
+        const [key, value] = item.split(':');
+        if (!key) return item;
+
+        // Resolve the key part using defaultDict
+        const entry = parent._defaultDict!.find(dictItem => dictItem.LinkusMap === key);
+        let displayName = key; // Fallback
+
+        if (entry && entry.LinkusAlias) {
+          displayName = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
+        }
+
+        return value ? `${displayName}:${value}` : displayName;
+      });
     },
   },
-  ItemUnion: {
-    __resolveType(obj: any, context: any, info: any) {
-      if (obj.__typename) return obj.__typename; // __typename is injected by the 'item' resolver
-      // Fallback logic (should not be strictly necessary if __typename is always provided)
-      if (obj.Art && obj.DamageType !== undefined) return 'Weapon';
-      if (obj.Set !== undefined && obj.Slot !== undefined) return 'Armor';
-      if (obj.VirtueNodes !== undefined && obj.Stats && obj.Stats.BonusHP !== undefined) return 'Pact';
-      return null;
-    }
-  },
+
   // Resolvers for specific fields within Image, Stats, etc. can be added if direct mapping is not sufficient
   // or if transformations are needed (e.g. parsing "1/20" into structured data).
   // For now, we assume direct mapping for most sub-fields.

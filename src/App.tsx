@@ -1,10 +1,10 @@
+import BuildStats from "@components/BuildStats";
 import ItemSelector from "@components/ItemSelector";
-import StatsDisplay from "@components/StatsDisplay";
 import { SelectedItems } from "@types/build";
 import localforage from "localforage";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
-export function App() {
+const App: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({
     helm: null,
     upperBody: null,
@@ -53,6 +53,7 @@ export function App() {
   }, [selectedItems, isLoading]);
 
   const handleItemSelect = (slot: keyof SelectedItems, item: any) => {
+    console.log(`App: Selecting item for ${slot}:`, item);
     setSelectedItems((prev) => ({
       ...prev,
       [slot]: item,
@@ -60,6 +61,7 @@ export function App() {
   };
 
   const handleItemRemove = (slot: keyof SelectedItems) => {
+    console.log(`App: Removing item from ${slot}`);
     setSelectedItems((prev) => ({
       ...prev,
       [slot]: null,
@@ -87,46 +89,115 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <header className="bg-gray-800 border-b border-gray-700 p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-400">
+    <div
+      className="min-h-screen w-full"
+      style={{
+        backgroundColor: "var(--bg-darkest)",
+        backgroundImage:
+          'url("https://s3.7thseraph.org/wiki.avakot.org/greyscale55.png")',
+        backgroundRepeat: "repeat",
+        backgroundBlendMode: "overlay",
+      }}
+    >
+      {/* Header */}
+      <header
+        className="px-6 py-4 w-full relative"
+        style={{
+          backgroundColor: "var(--bg-darker)",
+          borderBottom: "1px solid var(--divider-color)",
+        }}
+      >
+        <div className="w-full max-w-none">
+          <h1 className="text-3xl font-bold text-yellow-shiny text-shadow-heavy">
             Soulframe Builder
           </h1>
-          <button
-            onClick={clearAllItems}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
+          <p
+            className="text-shadow mt-2"
+            style={{ color: "var(--text-secondary)" }}
           >
-            Clear All
-          </button>
+            Build and optimize your Soulframe character
+          </p>
+        </div>
+
+        {/* Decorative Header Image */}
+        <div
+          className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+          style={{ pointerEvents: "none" }}
+        >
+          <img
+            src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Crafting/CraftingRankTopper.png"
+            alt=""
+            style={{
+              height: "120px",
+              width: "auto",
+              filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))",
+              opacity: 0.9,
+            }}
+          />
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Item Selection Panel */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-blue-300">
-              Equipment Selection
-            </h2>
-            <ItemSelector
-              selectedItems={selectedItems}
-              onItemSelect={handleItemSelect}
-              onItemRemove={handleItemRemove}
-            />
+      {/* Main Content */}
+      <main className="w-full px-6 py-8" style={{ paddingTop: "4rem" }}>
+        <div className="three-column-grid w-full max-w-none">
+          {/* Equipment Selection */}
+          <div className="card">
+            <div className="card-header">
+              <h2>Equipment</h2>
+            </div>
+            <div className="card-body scrollable-content">
+              <ItemSelector
+                selectedItems={selectedItems}
+                onItemSelect={handleItemSelect}
+                onItemRemove={handleItemRemove}
+              />
+            </div>
           </div>
 
-          {/* Stats Display Panel */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-green-300">
-              Build Stats
-            </h2>
-            <StatsDisplay selectedItems={selectedItems} />
+          {/* Build Summary */}
+          <div className="card">
+            <div className="card-header">
+              <h2>Build Summary</h2>
+            </div>
+            <div className="card-body scrollable-content">
+              <div className="space-y-4">
+                {Object.entries(selectedItems).map(([slot, item]) => (
+                  <div
+                    key={slot}
+                    className="flex items-center justify-between p-3 rounded"
+                    style={{
+                      backgroundColor: "var(--bg-dark)",
+                      border: "1px solid var(--accent-subtle)",
+                    }}
+                  >
+                    <span className="font-medium capitalize text-shadow">
+                      {slot === "sidearm"
+                        ? "Secondary"
+                        : slot.replace(/([A-Z])/g, " $1")}
+                      :
+                    </span>
+                    <span className="text-yellow-shiny font-medium">
+                      {item ? item.DisplayName || item.LinkusAlias : "None"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Build Stats */}
+          <div className="card">
+            <div className="card-header">
+              <h2>Stats</h2>
+            </div>
+            <div className="card-body scrollable-content">
+              <BuildStats selectedItems={selectedItems} />
+            </div>
           </div>
         </div>
       </main>
     </div>
   );
-}
+};
 
 export default App;

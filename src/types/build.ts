@@ -12,32 +12,11 @@ export interface BuildStats {
   totalPhysicalDefence: number;
   totalMagickDefence: number;
   totalStabilityIncrease: number;
-  totalBonusHP: number;
   virtueBonus: {
+    Order: number;
     Grace: number;
     Spirit: number;
     Courage: number;
   };
-  weaponStats?: {
-    primary?: any;
-    sidearm?: any;
-  };
-}
-
-export interface ItemSlot {
-  name: string;
-  slot: keyof SelectedItems;
-  category: 'armor' | 'weapon' | 'pact';
-  endpoint: string;
-}
-
-export interface ItemWithDisplayName {
-  LinkusAlias: string;
-  DisplayName?: string;
-  [key: string]: any;
-}
-
-export interface DictEntry {
-  LinkusMap: string;
-  LinkusAlias: string | string[];
+  bonusHP: number;
 }
