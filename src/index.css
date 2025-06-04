@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+/* ===== COLOR PALETTE ===== */
+:root {
+  /* Background Colors */
+  --bg-darkest: #1c1a16; /* Deepest dark brown */
+  --bg-darker: #181614; /* Dark brown */
+  --bg-dark: #2a2722; /* Brown */
+  --bg-medium: #2e2b27; /* Medium brown */
+  --bg-light: #3b3831; /* Lighter brown */
+
+  /* Text Colors */
+  --text-primary: #e8e0cf; /* Cream/beige */
+  --text-secondary: #d0c8b5; /* Light beige */
+  --text-muted: #a8a090; /* Muted beige */
+  --text-lightest: #f2eee3; /* Lightest cream */
+  --text-shadow: #0e0b06e6; /* Shadow color for text */
+
+  /* Accent Colors */
+  --accent-primary: #a67c52; /* Warm brown */
+  --accent-secondary: #8a6642; /* Darker brown */
+  --accent-tertiary: #c1a77b; /* Light gold */
+  --accent-subtle: #5c4c3a; /* Dark gold */
+
+  /* UI Element Colors */
+  --border-color: #3b3831; /* Matches bg-light */
+  --divider-color: #4a4639; /* Subtle divider */
+  --shadow-color: rgba(0, 0, 0, 0.5); /* Shadow for depth */
+
+  /* Game-specific colors */
+  --grace-color: #3d6078;
+  --spirit-color: #627457;
+  --courage-color: #562021;
+  --yellow-shiny: #d19536;
+
+  /* Primary Color */
+  --primary-color: var(--courage-color);
+
+  /* Custom Tailwind utilities */
+  --gray-750: rgb(55 65 81);
+}
+
+@layer base {
+  /* Global Font Settings */
+  body,
+  input,
+  button,
+  textarea {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.6;
+    background-color: var(--bg-darkest);
+  }
+
+  /* Headings */
+  h1,
+  h2,
+  h3 {
+    font-family: "Inter", sans-serif;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+  }
+
+  /* Links */
+  a {
+    color: var(--yellow-shiny);
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+
+  a:hover {
+    color: var(--text-lightest);
+    text-decoration: underline;
+  }
+}
+
+/* Custom Tailwind utilities */
+.bg-gray-750 {
+  background-color: var(--gray-750);
+}
+
+/* Button Styling */
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: var(--text-lightest);
+  border: 1px solid var(--accent-secondary);
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.btn-danger {
+  background-color: var(--courage-color);
+  color: var(--text-lightest);
+  border: 1px solid #7a2b2c;
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: #7a2b2c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+/* Card Styling */
+.card {
+  background-color: var(--bg-darker);
+  border: 2px solid var(--accent-subtle);
+  border-radius: 8px;
+  box-shadow: 0 4px 8px var(--shadow-color), 0 6px 12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px var(--shadow-color), 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.card-header {
+  background-color: var(--bg-dark);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Table Styling */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: transparent;
+  border: 1px solid var(--divider-color);
+}
+
+.table th {
+  background-color: var(--bg-medium);
+  color: var(--text-lightest);
+  font-weight: 600;
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid var(--divider-color);
+}
+
+.table td {
+  padding: 0.75rem;
+  border: 1px solid var(--divider-color);
+  color: var(--text-primary);
+  background-color: transparent;
+}
+
+.table tbody tr:nth-child(2n) td {
+  background-color: rgba(41, 29, 22, 0.3);
+}
+
+.table tbody tr:hover td {
+  background-color: var(--accent-subtle);
+  color: var(--text-lightest);
+}
+
+/* Form Styling */
+.form-input {
+  background-color: var(--bg-medium);
+  border: 1px solid var(--accent-subtle);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(166, 124, 82, 0.2);
+}
+
+/* Utility Classes */
+.text-shadow {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.shadow-enhanced {
+  box-shadow: 0 4px 8px var(--shadow-color), 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.05;
+  background: url("./logo.svg");
+  background-size: 256px;
+  transform: rotate(-12deg) scale(1.35);
+  animation: slide 30s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 256px 224px;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+  }
+}
