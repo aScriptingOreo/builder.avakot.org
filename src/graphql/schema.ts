@@ -46,7 +46,7 @@ async function resolveDisplayName(linkusAlias: string): Promise<string> {
 async function resolveCraftingItemName(itemString: string): Promise<string> {
   const [key, value] = itemString.split(':');
   if (!key) return itemString;
-  
+
   const displayName = await resolveDisplayName(key);
   return value ? `${displayName}:${value}` : displayName;
 }
@@ -55,17 +55,26 @@ export const typeDefs = `
   type Query {
     weapons: [Weapon]
     weapon(LinkusAlias: String!): Weapon
+    weaponsBySlot(slot: String!): [Weapon] # Primary, Secondary, etc.
 
     armors: [Armor]
     armor(LinkusAlias: String!): Armor
+    armorsBySlot(slot: String!): [Armor] # Helm, UpperBody, LowerBody, Totem
 
     pacts: [Pact]
     pact(LinkusAlias: String!): Pact
 
     craftingRecipes: [CraftingRecipe]
-    craftingRecipe(LinkusAlias: String!): CraftingRecipe # Fetches recipe by item's LinkusAlias
+    craftingRecipe(LinkusAlias: String!): CraftingRecipe
 
-    # Allows searching for an item across different types
+    # Equipment slot queries for buildcrafting
+    helms: [Armor]
+    upperBodyArmor: [Armor]
+    lowerBodyArmor: [Armor]
+    totems: [Armor]
+    primaryWeapons: [Weapon]
+    secondaryWeapons: [Weapon]
+
     item(LinkusAlias: String!): ItemUnion
 
     # DefaultDict queries for name resolution
@@ -225,20 +234,61 @@ export const resolvers = {
     craftingRecipe: async (_: any, { LinkusAlias }: { LinkusAlias: string }) =>
       await findCraftingRecipeByAlias(LinkusAlias),
 
+    weaponsBySlot: async (_: any, { slot }: { slot: string }) => {
+      const data = await fetchData('MWS');
+      return data.filter(w => w.Slot === slot);
+    },
+
+    armorsBySlot: async (_: any, { slot }: { slot: string }) => {
+      const data = await fetchData('MAS');
+      return data.filter(a => a.Slot === slot);
+    },
+
+    // Equipment slot-specific queries
+    helms: async () => {
+      const data = await fetchData('MAS');
+      return data.filter(a => a.Slot === 'Helm');
+    },
+
+    upperBodyArmor: async () => {
+      const data = await fetchData('MAS');
+      return data.filter(a => a.Slot === 'UpperBody');
+    },
+
+    lowerBodyArmor: async () => {
+      const data = await fetchData('MAS');
+      return data.filter(a => a.Slot === 'LowerBody');
+    },
+
+    totems: async () => {
+      const data = await fetchData('MAS');
+      return data.filter(a => a.Slot === 'Totem');
+    },
+
+    primaryWeapons: async () => {
+      const data = await fetchData('MWS');
+      return data.filter(w => w.Slot === 'Primary');
+    },
+
+    secondaryWeapons: async () => {
+      const data = await fetchData('MWS');
+      return data.filter(w => w.Slot === 'Secondary');
+    },
+
     defaultDict: async () => await fetchData('defaultDict'),
     resolveDisplayName: async (_: any, { linkusAlias }: { linkusAlias: string }) =>
       await resolveDisplayName(linkusAlias),
-    
+
     item: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
       let itemData = (await fetchData('MWS')).find(w => w.LinkusAlias === LinkusAlias);
       if (itemData) return { __typename: 'Weapon', ...itemData };
-      
+
       itemData = (await fetchData('MAS')).find(a => a.LinkusAlias === LinkusAlias);
       if (itemData) return { __typename: 'Armor', ...itemData };
 
       itemData = (await fetchData('MPS')).find(p => p.LinkusAlias === LinkusAlias);
       if (itemData) return { __typename: 'Pact', ...itemData };
-      
+
       return null;
     }
   },
@@ -254,8 +304,8 @@ export const resolvers = {
     DisplayName: async (parent: { LinkusAlias: string }) => await resolveDisplayName(parent.LinkusAlias),
     CraftingRecipe: async (parent: { LinkusAlias: string }) => await findCraftingRecipeByAlias(parent.LinkusAlias),
     Stats: (parent: any) => ({ // Handle typo UnnarmedDmg -> UnarmedDmg
-        ...parent.Stats,
-        UnarmedDmg: parent.Stats.UnnarmedDmg, // Map from JSON
+      ...parent.Stats,
+      UnarmedDmg: parent.Stats.UnnarmedDmg, // Map from JSON
     }),
   },
   CraftingRecipe: {
@@ -269,13 +319,13 @@ export const resolvers = {
     },
   },
   ItemUnion: {
-    __resolveType(obj: any, context: any, info: any){
+    __resolveType(obj: any, context: any, info: any) {
       if (obj.__typename) return obj.__typename; // __typename is injected by the 'item' resolver
       // Fallback logic (should not be strictly necessary if __typename is always provided)
-      if(obj.Art && obj.DamageType !== undefined) return 'Weapon';
-      if(obj.Set !== undefined && obj.Slot !== undefined) return 'Armor';
-      if(obj.VirtueNodes !== undefined && obj.Stats && obj.Stats.BonusHP !== undefined) return 'Pact';
-      return null; 
+      if (obj.Art && obj.DamageType !== undefined) return 'Weapon';
+      if (obj.Set !== undefined && obj.Slot !== undefined) return 'Armor';
+      if (obj.VirtueNodes !== undefined && obj.Stats && obj.Stats.BonusHP !== undefined) return 'Pact';
+      return null;
     }
   },
   // Resolvers for specific fields within Image, Stats, etc. can be added if direct mapping is not sufficient

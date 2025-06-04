@@ -133,6 +133,9 @@
   box-shadow: 0 4px 8px var(--shadow-color), 0 6px 12px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flex children to shrink */
 }
 
 .card:hover {
@@ -144,10 +147,15 @@
   background-color: var(--bg-dark);
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--divider-color);
+  flex-shrink: 0; /* Don't shrink headers */
 }
 
 .card-body {
   padding: 1.5rem;
+  flex: 1; /* Take remaining space */
+  overflow: auto; /* Allow scrolling if content overflows */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Table Styling */
@@ -246,4 +254,66 @@ body::before {
   ::after {
     animation: none !important;
   }
+}
+
+/* Grid Layout Utilities */
+.three-column-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2rem;
+  height: 100%;
+  min-height: 600px;
+}
+
+@media (max-width: 1024px) {
+  .three-column-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .three-column-grid > :nth-child(3) {
+    grid-column: 1 / -1; /* Stats span full width on tablets */
+  }
+}
+
+@media (max-width: 768px) {
+  .three-column-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 1.5rem;
+    height: auto;
+  }
+}
+
+/* Scrollable Content Areas */
+.scrollable-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Custom Scrollbar Styling */
+.scrollable-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+  border-radius: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+  background: var(--accent-subtle);
+  border-radius: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Firefox scrollbar */
+.scrollable-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-subtle) var(--bg-dark);
 }
