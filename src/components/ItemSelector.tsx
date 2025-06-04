@@ -2,16 +2,34 @@ import { SelectedItems } from "@types/build";
 import React from "react";
 import EquipmentSlot from "./EquipmentSlot";
 
+interface MoteItem {
+  MoteID: string;
+  DisplayName?: string;
+  Img?: {
+    Icon?: string;
+  };
+  Effect?: string | string[];
+  Slot?: string;
+}
+
 interface ItemSelectorProps {
   selectedItems: SelectedItems;
   onItemSelect: (slot: keyof SelectedItems, item: any) => void;
   onItemRemove: (slot: keyof SelectedItems) => void;
+  onMoteSelect?: (
+    slot: keyof SelectedItems,
+    moteIndex: number,
+    mote: MoteItem
+  ) => void;
+  onMoteRemove?: (slot: keyof SelectedItems, moteIndex: number) => void;
 }
 
 const ItemSelector: React.FC<ItemSelectorProps> = ({
   selectedItems,
   onItemSelect,
   onItemRemove,
+  onMoteSelect,
+  onMoteRemove,
 }) => {
   // Wrapper functions to prevent event propagation issues
   const handleItemSelect = (slot: keyof SelectedItems) => (item: any) => {
@@ -21,6 +39,20 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
   const handleItemRemove = (slot: keyof SelectedItems) => () => {
     onItemRemove(slot);
   };
+
+  const handleMoteSelect =
+    (slot: keyof SelectedItems) => (moteIndex: number, mote: MoteItem) => {
+      if (onMoteSelect) {
+        onMoteSelect(slot, moteIndex, mote);
+      }
+    };
+
+  const handleMoteRemove =
+    (slot: keyof SelectedItems) => (moteIndex: number) => {
+      if (onMoteRemove) {
+        onMoteRemove(slot, moteIndex);
+      }
+    };
 
   return (
     <div className="space-y-4">
@@ -73,6 +105,8 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
             selectedItem={selectedItems.primary}
             onItemSelect={handleItemSelect("primary")}
             onItemRemove={handleItemRemove("primary")}
+            onMoteSelect={handleMoteSelect("primary")}
+            onMoteRemove={handleMoteRemove("primary")}
           />
           <EquipmentSlot
             slotName="secondary"
@@ -80,6 +114,8 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
             selectedItem={selectedItems.sidearm}
             onItemSelect={handleItemSelect("sidearm")}
             onItemRemove={handleItemRemove("sidearm")}
+            onMoteSelect={handleMoteSelect("sidearm")}
+            onMoteRemove={handleMoteRemove("sidearm")}
           />
         </div>
       </div>
@@ -96,6 +132,8 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
             selectedItem={selectedItems.pact}
             onItemSelect={handleItemSelect("pact")}
             onItemRemove={handleItemRemove("pact")}
+            onMoteSelect={handleMoteSelect("pact")}
+            onMoteRemove={handleMoteRemove("pact")}
           />
         </div>
       </div>

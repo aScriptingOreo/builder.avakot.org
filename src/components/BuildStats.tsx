@@ -1,204 +1,164 @@
 import React from "react";
-import { BuildStats as BuildStatsType, SelectedItems } from "../types/build";
+import { SelectedItems } from "../types/build";
+import {
+  calculateStats,
+  ConsolidatedStats,
+  formatStatValue,
+} from "../utils/statCalculator";
 
 interface BuildStatsProps {
   selectedItems: SelectedItems;
 }
 
 const BuildStats: React.FC<BuildStatsProps> = ({ selectedItems }) => {
-  // Calculate stats from selected items
-  const calculateStats = (): BuildStatsType => {
-    const stats: BuildStatsType = {
-      totalPhysicalDefence: 0,
-      totalMagickDefence: 0,
-      totalStabilityIncrease: 0,
-      virtueBonus: {
-        Order: 0,
-        Grace: 0,
-        Spirit: 0,
-        Courage: 0,
-      },
-      bonusHP: 0,
-    };
+  const stats: ConsolidatedStats = calculateStats(selectedItems);
 
-    // Calculate armor stats
-    Object.values(selectedItems).forEach((item) => {
-      if (!item) return;
+  // Check if any items are selected
+  const hasItems = Object.values(selectedItems).some((item) => item !== null);
 
-      // Armor stats
-      if (item.Stats) {
-        if (item.Stats.PhysicalDefence) {
-          stats.totalPhysicalDefence +=
-            parseFloat(item.Stats.PhysicalDefence) || 0;
-        }
-        if (item.Stats.MagickDefence) {
-          stats.totalMagickDefence += parseFloat(item.Stats.MagickDefence) || 0;
-        }
-        if (item.Stats.StabilityIncrease) {
-          stats.totalStabilityIncrease +=
-            parseFloat(item.Stats.StabilityIncrease) || 0;
-        }
-        if (item.Stats.BonusHP) {
-          stats.bonusHP += parseFloat(item.Stats.BonusHP) || 0;
-        }
+  // Display message if no items are selected
+  if (!hasItems) {
+    return (
+      <div
+        className="text-center py-8 text-shadow"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Select equipment to view stats.
+      </div>
+    );
+  }
 
-        // Virtue bonuses (from totems and pacts)
-        if (
-          item.Stats.Virtue &&
-          item.Stats.Virtue.Type &&
-          item.Stats.Virtue.Value
-        ) {
-          const virtueType = item.Stats.Virtue
-            .Type as keyof typeof stats.virtueBonus;
-          if (virtueType in stats.virtueBonus) {
-            stats.virtueBonus[virtueType] +=
-              parseFloat(item.Stats.Virtue.Value) || 0;
-          }
-        }
-
-        // Pact virtue bonuses
-        if (
-          item.Stats.BonusVirtue &&
-          item.Stats.BonusVirtue.Type &&
-          item.Stats.BonusVirtue.Value
-        ) {
-          const virtueType = item.Stats.BonusVirtue
-            .Type as keyof typeof stats.virtueBonus;
-          if (virtueType in stats.virtueBonus) {
-            stats.virtueBonus[virtueType] +=
-              parseFloat(item.Stats.BonusVirtue.Value) || 0;
-          }
-        }
-      }
-    });
-
-    return stats;
-  };
-
-  const stats = calculateStats();
+  // Helper function to determine if a section should be displayed
+  const hasDefensiveStats =
+    stats.physicalDefence > 0 ||
+    stats.magickDefence > 0 ||
+    stats.stabilityIncrease > 0 ||
+    stats.bonusHP > 0;
+  const hasOffensiveStats =
+    stats.attackPower > 0 || stats.chargedAttack > 0 || stats.stagger > 0;
+  const hasVirtueStats =
+    stats.graceValue > 0 || stats.spiritValue > 0 || stats.courageValue > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Defense Stats */}
-      <div
-        style={{
-          backgroundColor: "var(--bg-dark)",
-          border: "1px solid var(--accent-subtle)",
-          borderRadius: "6px",
-          padding: "1rem",
-        }}
-      >
-        <h4 className="font-semibold mb-3 text-spirit text-shadow-heavy">
-          Defense
-        </h4>
-        <div className="space-y-2">
-          <div className="flex justify-between text-shadow">
-            <span>Physical Defence:</span>
-            <span className="text-yellow-shiny font-medium">
-              {stats.totalPhysicalDefence.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex justify-between text-shadow">
-            <span>Magick Defence:</span>
-            <span className="text-yellow-shiny font-medium">
-              {stats.totalMagickDefence.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex justify-between text-shadow">
-            <span>Stability Increase:</span>
-            <span className="text-yellow-shiny font-medium">
-              {stats.totalStabilityIncrease.toFixed(1)}
-            </span>
-          </div>
+    <div className="space-y-6">
+      {/* Defensive Stats - only show if any values exist */}
+      {hasDefensiveStats && (
+        <div>
+          <h3 className="text-lg font-semibold mb-2 text-shadow-heavy">
+            Defensive
+          </h3>
+          <table className="statusus-table w-full">
+            <tbody>
+              {stats.physicalDefence > 0 && (
+                <tr>
+                  <td>Physical Defence</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.physicalDefence)}
+                  </td>
+                </tr>
+              )}
+              {stats.magickDefence > 0 && (
+                <tr>
+                  <td>Magick Defence</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.magickDefence)}
+                  </td>
+                </tr>
+              )}
+              {stats.stabilityIncrease > 0 && (
+                <tr>
+                  <td>Stability</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.stabilityIncrease)}
+                  </td>
+                </tr>
+              )}
+              {stats.bonusHP > 0 && (
+                <tr>
+                  <td>Bonus HP</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.bonusHP)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
 
-      {/* Health Stats */}
-      <div
-        style={{
-          backgroundColor: "var(--bg-dark)",
-          border: "1px solid var(--accent-subtle)",
-          borderRadius: "6px",
-          padding: "1rem",
-        }}
-      >
-        <h4 className="font-semibold mb-3 text-courage text-shadow-heavy">
-          Health
-        </h4>
-        <div className="flex justify-between text-shadow">
-          <span>Bonus HP:</span>
-          <span className="text-yellow-shiny font-medium">
-            {stats.bonusHP.toFixed(0)}
-          </span>
+      {/* Offensive Stats - only show if any values exist and weapons are equipped */}
+      {hasOffensiveStats && (
+        <div>
+          <h3 className="text-lg font-semibold mb-2 text-shadow-heavy text-courage">
+            Offensive
+          </h3>
+          <table className="statusus-table w-full">
+            <tbody>
+              {stats.attackPower > 0 && (
+                <tr>
+                  <td>Attack Power</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.attackPower)}
+                  </td>
+                </tr>
+              )}
+              {stats.chargedAttack > 0 && (
+                <tr>
+                  <td>Charged Attack</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.chargedAttack)}
+                  </td>
+                </tr>
+              )}
+              {stats.stagger > 0 && (
+                <tr>
+                  <td>Stagger</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.stagger)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
 
-      {/* Virtue Bonuses */}
-      <div
-        style={{
-          backgroundColor: "var(--bg-dark)",
-          border: "1px solid var(--accent-subtle)",
-          borderRadius: "6px",
-          padding: "1rem",
-        }}
-      >
-        <h4 className="font-semibold mb-3 text-grace text-shadow-heavy">
-          Virtue Bonuses
-        </h4>
-        <div className="space-y-2">
-          <div className="flex justify-between text-shadow">
-            <span className="text-grace">Grace:</span>
-            <span className="text-yellow-shiny font-medium">
-              +{stats.virtueBonus.Grace.toFixed(0)}
-            </span>
-          </div>
-          <div className="flex justify-between text-shadow">
-            <span className="text-spirit">Spirit:</span>
-            <span className="text-yellow-shiny font-medium">
-              +{stats.virtueBonus.Spirit.toFixed(0)}
-            </span>
-          </div>
-          <div className="flex justify-between text-shadow">
-            <span className="text-courage">Courage:</span>
-            <span className="text-yellow-shiny font-medium">
-              +{stats.virtueBonus.Courage.toFixed(0)}
-            </span>
-          </div>
-          <div className="flex justify-between text-shadow">
-            <span>Order:</span>
-            <span className="text-yellow-shiny font-medium">
-              +{stats.virtueBonus.Order.toFixed(0)}
-            </span>
-          </div>
+      {/* Virtue Stats - only show if any values exist */}
+      {hasVirtueStats && (
+        <div>
+          <h3 className="text-lg font-semibold mb-2 text-shadow-heavy">
+            Virtues
+          </h3>
+          <table className="statusus-table w-full">
+            <tbody>
+              {stats.graceValue > 0 && (
+                <tr>
+                  <td className="text-grace">Grace</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.graceValue)}
+                  </td>
+                </tr>
+              )}
+              {stats.spiritValue > 0 && (
+                <tr>
+                  <td className="text-spirit">Spirit</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.spiritValue)}
+                  </td>
+                </tr>
+              )}
+              {stats.courageValue > 0 && (
+                <tr>
+                  <td className="text-courage">Courage</td>
+                  <td className="text-right">
+                    {formatStatValue(stats.courageValue)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      {/* Equipment Count */}
-      <div
-        style={{
-          backgroundColor: "var(--bg-dark)",
-          border: "1px solid var(--accent-subtle)",
-          borderRadius: "6px",
-          padding: "1rem",
-        }}
-      >
-        <h4
-          className="font-semibold mb-3 text-shadow-heavy"
-          style={{ color: "var(--accent-tertiary)" }}
-        >
-          Equipment
-        </h4>
-        <div className="flex justify-between text-shadow">
-          <span>Items Equipped:</span>
-          <span className="text-yellow-shiny font-medium">
-            {
-              Object.values(selectedItems).filter((item) => item !== null)
-                .length
-            }
-            /7
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

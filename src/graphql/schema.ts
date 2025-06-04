@@ -122,6 +122,12 @@ export const typeDefs = `
     # DefaultDict queries for name resolution
     defaultDict: [DictEntry]
     resolveDisplayName(linkusAlias: String!): String
+
+    # Motes Queries - Simplified
+    motes: [Mote]
+    weaponMotes: [Mote]
+    pactMotes: [Mote]
+    mote(MoteID: String!): Mote
   }
 
   union ItemUnion = Weapon | Armor | Pact
@@ -168,6 +174,7 @@ export const typeDefs = `
     Img: Image
     Stats: WeaponStats
     CraftingRecipe: CraftingRecipe
+    Motes: [Mote] # Added field for associated motes
   }
 
   # Armor Types (MAS.json)
@@ -225,6 +232,7 @@ export const typeDefs = `
     Stats: PactStats
     VirtueNodes: PactVirtueNodes
     CraftingRecipe: CraftingRecipe
+    Motes: [Mote] # Added field for associated motes
   }
 
   # Crafting Recipe Types (MIC.json)
@@ -248,6 +256,18 @@ export const typeDefs = `
   type DictEntry {
     LinkusMap: String!
     LinkusAlias: [String] # Can be string or array of strings
+  }
+
+  # Simplified Mote Type to match API exactly
+  type Mote {
+    MoteID: String!
+    Img: MoteImage
+    Slot: String
+    Effect: String
+  }
+
+  type MoteImage {
+    Icon: String
   }
 `;
 
@@ -462,6 +482,27 @@ export const resolvers = {
       if (itemData) return { __typename: 'Pact', ...itemData, _defaultDict: defaultDict };
 
       return null;
+    },
+
+    // Simplified Motes resolvers
+    motes: async () => {
+      // Direct passthrough from API
+      return fetchData('Motes');
+    },
+
+    weaponMotes: async () => {
+      const motes = await fetchData('Motes');
+      return motes.filter((mote: any) => mote.Slot === 'Weapons');
+    },
+
+    pactMotes: async () => {
+      const motes = await fetchData('Motes');
+      return motes.filter((mote: any) => mote.Slot === 'Pacts');
+    },
+
+    mote: async (_: any, { MoteID }: { MoteID: string }) => {
+      const motes = await fetchData('Motes');
+      return motes.find((mote: any) => mote.MoteID === MoteID);
     }
   },
 
@@ -479,26 +520,26 @@ export const resolvers = {
       }
 
       if (parent._defaultDict && Array.isArray(parent._defaultDict)) {
-        console.log(`Searching in defaultDict with ${parent._defaultDict.length} entries for: ${linkusMapValue}`);
+        //console.log(`Searching in defaultDict with ${parent._defaultDict.length} entries for: ${linkusMapValue}`);
 
         const entry = parent._defaultDict.find(item => item.LinkusMap === linkusMapValue);
 
         if (entry && entry.LinkusAlias) {
           const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
-          console.log(`Armor DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          //console.log(`Armor DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
           return resolved;
         } else {
-          console.log(`Armor DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
+          //console.log(`Armor DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
           // Log a few sample entries for debugging
           if (parent._defaultDict.length > 0) {
-            console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
+            //console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
           }
         }
       } else {
-        console.log('Armor DisplayName: No defaultDict available or not an array');
+        //console.log('Armor DisplayName: No defaultDict available or not an array');
       }
 
-      console.log(`Armor DisplayName fallback: ${linkusMapValue}`);
+      //console.log(`Armor DisplayName fallback: ${linkusMapValue}`);
       return linkusMapValue;
     },
 
@@ -531,10 +572,9 @@ export const resolvers = {
       // Use LinkusMap if available (the corrected API value), otherwise fall back to LinkusAlias
       const linkusMapValue = parent.LinkusMap || parent.LinkusAlias;
 
-      console.log(`Weapon DisplayName resolver - LinkusAlias: ${parent.LinkusAlias}, LinkusMap: ${parent.LinkusMap}, using: ${linkusMapValue}`);
-
+      //
       if (!linkusMapValue) {
-        console.log('Weapon DisplayName: No LinkusAlias or LinkusMap provided');
+        //console.log('Weapon DisplayName: No LinkusAlias or LinkusMap provided');
         return '';
       }
 
@@ -545,20 +585,20 @@ export const resolvers = {
 
         if (entry && entry.LinkusAlias) {
           const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
-          console.log(`Weapon DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          //console.log(`Weapon DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
           return resolved;
         } else {
-          console.log(`Weapon DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
+          //console.log(`Weapon DisplayName: No mapping found for ${linkusMapValue} in defaultDict`);
           // Log a few sample entries for debugging
           if (parent._defaultDict.length > 0) {
-            console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
+            //console.log('Sample defaultDict entries:', parent._defaultDict.slice(0, 3).map(e => ({ LinkusMap: e.LinkusMap, LinkusAlias: e.LinkusAlias })));
           }
         }
       } else {
-        console.log('Weapon DisplayName: No defaultDict available or not an array');
+        //console.log('Weapon DisplayName: No defaultDict available or not an array');
       }
 
-      console.log(`Weapon DisplayName fallback: ${linkusMapValue}`);
+      //console.log(`Weapon DisplayName fallback: ${linkusMapValue}`);
       return linkusMapValue;
     },
 
@@ -583,6 +623,11 @@ export const resolvers = {
         _defaultDict: parent._defaultDict
       };
     },
+
+    // Simplified Motes resolver for Weapon
+    Motes: async () => {
+      return []; // For now, just return empty array
+    },
   },
 
   Pact: {
@@ -597,7 +642,7 @@ export const resolvers = {
 
         if (entry && entry.LinkusAlias) {
           const resolved = Array.isArray(entry.LinkusAlias) ? entry.LinkusAlias[0] : entry.LinkusAlias;
-          console.log(`Pact DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
+          //console.log(`Pact DisplayName resolved: ${linkusMapValue} -> ${resolved}`);
           return resolved;
         }
       }
@@ -621,6 +666,11 @@ export const resolvers = {
       ...parent.Stats,
       UnarmedDmg: parent.Stats.UnnarmedDmg, // Map from JSON
     }),
+
+    // Simplified Motes resolver for Pact
+    Motes: async () => {
+      return []; // For now, just return empty array
+    },
   },
 
   CraftingRecipe: {

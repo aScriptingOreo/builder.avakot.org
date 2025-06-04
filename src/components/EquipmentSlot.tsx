@@ -1,5 +1,16 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
+import MoteSelector from "./MoteSelector";
+
+interface MoteItem {
+  MoteID: string;
+  DisplayName?: string;
+  Img?: {
+    Icon?: string;
+  };
+  Effect?: string | string[];
+  Slot?: string;
+}
 
 interface EquipmentItem {
   LinkusAlias: string;
@@ -13,6 +24,7 @@ interface EquipmentItem {
   Set?: string;
   Art?: string;
   Rarity?: string;
+  Motes?: MoteItem[];
 }
 
 interface EquipmentSlotProps {
@@ -21,6 +33,8 @@ interface EquipmentSlotProps {
   selectedItem: EquipmentItem | null;
   onItemSelect: (item: EquipmentItem) => void;
   onItemRemove: () => void;
+  onMoteSelect?: (moteIndex: number, mote: MoteItem) => void;
+  onMoteRemove?: (moteIndex: number) => void;
 }
 
 const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
@@ -29,9 +43,13 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
   selectedItem,
   onItemSelect,
   onItemRemove,
+  onMoteSelect,
+  onMoteRemove,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showMoteSelector, setShowMoteSelector] = useState(false);
+  const [activeMoteIndex, setActiveMoteIndex] = useState<number | null>(null);
   const [items, setItems] = useState<EquipmentItem[]>([]);
 
   // Map slot names to GraphQL queries - Use armorsBySlot and weaponsBySlot for filtering
@@ -176,11 +194,46 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     onItemRemove();
   };
 
+  // New function to handle mote slot click
+  const handleMoteSlotClick = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveMoteIndex(index);
+    setShowMoteSelector(true);
+  };
+
+  // New function to handle mote selection
+  const handleMoteSelect = (mote: MoteItem) => {
+    if (activeMoteIndex !== null && onMoteSelect) {
+      onMoteSelect(activeMoteIndex, mote);
+    }
+    setShowMoteSelector(false);
+    setActiveMoteIndex(null);
+  };
+
+  // New function to handle mote removal
+  const handleMoteRemove = (index: number) => {
+    if (onMoteRemove) {
+      onMoteRemove(index);
+    }
+  };
+
   // Helper function to get the best available image
   const getItemImage = (item: any) => {
     if (!item.Img) return null;
     // Prefer Preview over Icon
     return item.Img.Preview || item.Img.Icon || null;
+  };
+
+  // Helper function to get mote image
+  const getMoteImage = (mote: MoteItem) => {
+    return mote.Img?.Icon || null;
+  };
+
+  // Helper function to get mote effect as string
+  const getMoteEffect = (mote: MoteItem): string => {
+    if (!mote.Effect) return "";
+    if (typeof mote.Effect === "string") return mote.Effect;
+    return mote.Effect.join(", ");
   };
 
   return (
@@ -218,42 +271,111 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         </div>
 
         {selectedItem ? (
-          <div className="flex items-center space-x-3">
-            {getItemImage(selectedItem) && (
-              <div
-                className="item-image-container"
-                style={{
-                  width: "3rem",
-                  height: "3rem",
-                }}
-              >
-                <img
-                  src={getItemImage(selectedItem)}
-                  alt={selectedItem.DisplayName || selectedItem.LinkusAlias}
-                  className="item-image"
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              <div
-                className="item-name"
-                style={{
-                  fontSize: "1rem",
-                  marginBottom: "0.25rem",
-                  color: "var(--yellow-shiny)", // Use theme color instead of blue
-                }}
-              >
-                {selectedItem.DisplayName || selectedItem.LinkusAlias}
-              </div>
-              {(selectedItem.Set || selectedItem.Art) && (
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-3">
+              {getItemImage(selectedItem) && (
                 <div
-                  className="text-sm text-shadow"
-                  style={{ color: "var(--text-muted)" }}
+                  className="item-image-container"
+                  style={{
+                    width: "3rem",
+                    height: "3rem",
+                  }}
                 >
-                  {selectedItem.Set || selectedItem.Art}
+                  <img
+                    src={getItemImage(selectedItem)}
+                    alt={selectedItem.DisplayName || selectedItem.LinkusAlias}
+                    className="item-image"
+                  />
                 </div>
               )}
+              <div className="flex-1">
+                <div
+                  className="item-name"
+                  style={{
+                    fontSize: "1rem",
+                    marginBottom: "0.25rem",
+                    color: "var(--yellow-shiny)",
+                  }}
+                >
+                  {selectedItem.DisplayName || selectedItem.LinkusAlias}
+                </div>
+                {(selectedItem.Set || selectedItem.Art) && (
+                  <div
+                    className="text-sm text-shadow"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    {selectedItem.Set || selectedItem.Art}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Mote slots - only for weapons and pacts */}
+            {(slotType === "weapon" || slotType === "pact") && (
+              <div className="mote-slots flex space-x-2 mt-2 justify-center">
+                {[0, 1, 2].map((index) => {
+                  const mote = selectedItem.Motes?.[index];
+                  return (
+                    <div
+                      key={`mote-slot-${index}`}
+                      className="mote-slot"
+                      onClick={(e) => handleMoteSlotClick(index, e)}
+                      style={{
+                        width: "2rem",
+                        height: "2rem",
+                        borderRadius: "50%",
+                        border: mote
+                          ? "1px solid var(--yellow-shiny)"
+                          : "1px dashed var(--accent-subtle)",
+                        backgroundColor: mote
+                          ? "rgba(209, 149, 54, 0.1)"
+                          : "var(--bg-medium)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        position: "relative",
+                      }}
+                      title={
+                        mote ? getMoteEffect(mote) : `Add ${slotType} mote`
+                      }
+                    >
+                      {mote ? (
+                        <>
+                          <div
+                            className="mote-image-container"
+                            style={{ width: "90%", height: "90%" }}
+                          >
+                            {getMoteImage(mote) ? (
+                              <img
+                                src={getMoteImage(mote)}
+                                alt={mote.DisplayName || mote.MoteID}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center text-xs">
+                                {mote.MoteID.substring(0, 1)}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            className="absolute -top-1 -right-1 bg-courage-color text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoteRemove(index);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </>
+                      ) : (
+                        <div className="text-text-muted text-xs">+</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <div
@@ -328,6 +450,16 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
           </div>
         )}
       </Modal>
+
+      {/* MoteSelector rendered separately - will appear via React Portal */}
+      {showMoteSelector && (
+        <MoteSelector
+          slotType={slotType === "weapon" ? "weapon" : "pact"}
+          isOpen={showMoteSelector}
+          onClose={() => setShowMoteSelector(false)}
+          onMoteSelect={handleMoteSelect}
+        />
+      )}
     </>
   );
 };
