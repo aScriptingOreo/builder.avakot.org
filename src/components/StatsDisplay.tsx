@@ -45,20 +45,68 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   // Calculate special mote effects that aren't virtue bonuses
   const getSpecialMoteEffects = () => {
     const specialEffects: string[] = [];
+    const processedMoteTypes: Set<string> = new Set();
 
     // Check weapon motes
     [selectedItems.primary, selectedItems.sidearm].forEach((weapon) => {
       if (weapon?.Motes) {
         weapon.Motes.forEach((mote) => {
           if (mote?.Effect) {
-            const { otherEffects } = parseMoteEffects(mote.Effect);
-            specialEffects.push(...otherEffects);
+            const { otherEffects, weaponBonuses } = parseMoteEffects(
+              mote.Effect
+            );
+
+            // Add non-numeric effects
+            specialEffects.push(
+              ...otherEffects.filter((effect) => {
+                // Filter out effects we're already showing in stats
+                if (
+                  effect.match(
+                    /Attack Damage|Fully-Charged Heavy Damage|Smite Chance/
+                  )
+                ) {
+                  return false;
+                }
+                return true;
+              })
+            );
+
+            // Add formatted versions of numeric effects
+            if (
+              weaponBonuses.attackDamage > 0 &&
+              !processedMoteTypes.has("attackDamage")
+            ) {
+              specialEffects.push(
+                `+${weaponBonuses.attackDamage} Attack Damage from motes`
+              );
+              processedMoteTypes.add("attackDamage");
+            }
+
+            if (
+              weaponBonuses.chargedAttackDamage > 0 &&
+              !processedMoteTypes.has("chargedAttackDamage")
+            ) {
+              specialEffects.push(
+                `+${weaponBonuses.chargedAttackDamage} Charged Attack Damage from motes`
+              );
+              processedMoteTypes.add("chargedAttackDamage");
+            }
+
+            if (
+              weaponBonuses.smiteChancePercent > 0 &&
+              !processedMoteTypes.has("smiteChance")
+            ) {
+              specialEffects.push(
+                `+${weaponBonuses.smiteChancePercent}% Smite Chance from motes`
+              );
+              processedMoteTypes.add("smiteChance");
+            }
           }
         });
       }
     });
 
-    // Check pact motes
+    // Check pact motes - Keep original behavior for pact motes
     if (selectedItems.pact?.Motes) {
       selectedItems.pact.Motes.forEach((mote) => {
         if (mote?.Effect) {
@@ -165,15 +213,28 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
 
         {/* Current weapon indicator */}
         {currentWeapon && (
-          <div className="mb-3 text-sm text-gray-300">
-            Showing stats for:{" "}
-            <span className="text-yellow-shiny font-medium">
-              {getItemDisplayName(currentWeapon)}
-            </span>
+          <div className="mb-3 text-sm">
+            <div className="text-gray-300">
+              Showing stats for:{" "}
+              <span className="text-yellow-shiny font-medium">
+                {getItemDisplayName(currentWeapon)}
+              </span>
+            </div>
+            {stats.art && (
+              <div className="text-gray-400 mt-1">
+                Art: <span className="text-yellow-200">{stats.art}</span>
+                {stats.damageType && (
+                  <span className="ml-2">
+                    • Type:{" "}
+                    <span className="text-yellow-200">{stats.damageType}</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <div className="text-sm text-gray-400">Attack Power</div>
             <div className="text-xl font-bold text-red-400">
@@ -192,7 +253,51 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
               {formatStatValue(stats.stagger)}
             </div>
           </div>
+          <div>
+            <div className="text-sm text-gray-400">Smite</div>
+            <div className="text-xl font-bold text-purple-400">
+              {/* Debug log what we're trying to display */}
+              {console.log(
+                "StatsDisplay: smiteDisplay value:",
+                stats.smiteDisplay
+              )}
+              {/* Only replace "/" with " in " if it exists */}
+              {stats.smiteDisplay && stats.smiteDisplay.includes("/")
+                ? stats.smiteDisplay.replace("/", " in ") + " hits"
+                : stats.smiteDisplay + " hits"}{" "}
+              <span className="text-sm text-purple-200">
+                ({stats.smitePercentage} chance)
+              </span>
+            </div>
+          </div>
         </div>
+
+        {/* Additional Weapon Stats Section */}
+        {currentWeapon && (
+          <div className="border-t border-gray-600 pt-3 mt-1">
+            <h4 className="text-sm font-medium text-yellow-200 mb-2">
+              Attunement Caps
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-400">Damage Attune Cap</div>
+                <div className="text-lg font-medium text-blue-300">
+                  {stats.damageAttuneCap > 0
+                    ? formatStatValue(stats.damageAttuneCap)
+                    : "N/A"}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-400">Virtue Attune Cap</div>
+                <div className="text-lg font-medium text-green-300">
+                  {stats.virtueAttuneCap > 0
+                    ? formatStatValue(stats.virtueAttuneCap)
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Virtue Bonuses - Always show */}

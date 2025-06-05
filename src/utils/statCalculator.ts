@@ -1,5 +1,5 @@
 import { SelectedItems } from "../types/build";
-import { parseArmorStats, parseMoteEffects, parsePactStats, parseWeaponStats } from "./statsParser";
+import { parseArmorStats, parseMoteEffects, parsePactStats, parseSmiteValue, parseWeaponStats } from "./statsParser";
 
 // Interface for consolidated stats
 export interface ConsolidatedStats {
@@ -15,6 +15,15 @@ export interface ConsolidatedStats {
   attackPower: number;
   chargedAttack: number;
   stagger: number;
+
+  // Additional weapon stats
+  smite: number;  // Numeric value (for calculations)
+  smiteDisplay: string;  // Original format (e.g., "3/50")
+  smitePercentage: string;  // Formatted percentage (e.g., "6.0%")
+  damageAttuneCap: number;
+  virtueAttuneCap: number;
+  damageType: string;
+  art: string;
 
   // Virtue stats
   graceValue: number;
@@ -58,6 +67,13 @@ export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: 
     attackPower: 0,
     chargedAttack: 0,
     stagger: 0,
+    smite: 0,
+    smiteDisplay: "0",
+    smitePercentage: "0%",
+    damageAttuneCap: 0,
+    virtueAttuneCap: 0,
+    damageType: "",       // New field
+    art: "",              // New field
     graceValue: 0,
     spiritValue: 0,
     courageValue: 0,
@@ -125,21 +141,128 @@ export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: 
 
     console.log(`calculateStats: Processing weapon ${weapon.LinkusAlias}, has Stats:`, !!weapon.Stats);
 
+    // Check the raw Smite value to debug
+    console.log(`calculateStats: Raw Smite value for ${weapon.LinkusAlias}:`,
+      weapon.Stats?.Smite || "No Smite value");
+
     const weaponStats = parseWeaponStats(weapon.Stats);
 
     // Show stats for the selected weapon (Primary or Sidearm)
     const isPrimaryWeapon = weapon === selectedItems.primary;
     const isSidearmWeapon = weapon === selectedItems.sidearm;
 
-    if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
-      stats.attackPower = weaponStats.Attack;
-      stats.chargedAttack = weaponStats.ChargedAttack;
-      stats.stagger = weaponStats.Stagger;
+    // Process weapon motes for stat bonuses
+    if (weapon.Motes && Array.isArray(weapon.Motes)) {
+      const weaponMotesBonuses = weapon.Motes
+        .filter(mote => mote) // Filter out null/undefined motes
+        .map(mote => {
+          if (mote?.Effect) {
+            const { weaponBonuses } = parseMoteEffects(mote.Effect);
+            return weaponBonuses;
+          }
+          return { attackDamage: 0, chargedAttackDamage: 0, smiteChancePercent: 0 };
+        });
+
+      // Sum up all bonuses from motes
+      const totalMoteBonus = weaponMotesBonuses.reduce(
+        (acc, bonus) => ({
+          attackDamage: acc.attackDamage + bonus.attackDamage,
+          chargedAttackDamage: acc.chargedAttackDamage + bonus.chargedAttackDamage,
+          smiteChancePercent: acc.smiteChancePercent + bonus.smiteChancePercent,
+        }),
+        { attackDamage: 0, chargedAttackDamage: 0, smiteChancePercent: 0 }
+      );
+
+      console.log(`calculateStats: Mote bonuses for ${weapon.LinkusAlias}:`, totalMoteBonus);
+
+      // Apply mote bonuses to selected weapon stats
+      if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
+        stats.attackPower = weaponStats.Attack + totalMoteBonus.attackDamage;
+        stats.chargedAttack = weaponStats.ChargedAttack + totalMoteBonus.chargedAttackDamage;
+
+        // Parse the smite value and apply percentage bonus
+        // Log the raw Smite value from weaponStats before parsing
+        console.log(`calculateStats: Raw weaponStats.Smite before parsing: "${weaponStats.Smite}"`);
+
+        const smiteInfo = parseSmiteValue(weaponStats.Smite);
+        console.log(`calculateStats: Original smite info for ${weapon.LinkusAlias}:`, smiteInfo);
+
+        if (smiteInfo.denominator > 0) {
+          // Get the original X/Y values
+          const originalX = smiteInfo.numerator;
+          const originalY = smiteInfo.denominator;
+
+          // Add the percentage boost from motes
+          const baseProbability = originalX / originalY;
+          const moteBoost = totalMoteBonus.smiteChancePercent / 100; // Convert percent to decimal
+
+          // Calculate the new probability (capped at 100%)
+          const newProbability = Math.min(baseProbability + moteBoost, 1.0);
+          const newPercentage = newProbability * 100;
+
+          // Keep the same denominator and calculate a new numerator
+          const newX = Math.round(newProbability * originalY);
+
+          console.log(`calculateStats: Smite calculation for ${weapon.LinkusAlias}:`, {
+            originalX,
+            originalY,
+            originalProbability: baseProbability,
+            moteBoostDecimal: moteBoost,
+            moteBoostPercent: totalMoteBonus.smiteChancePercent,
+            newProbability,
+            newX,
+            unchanged_Y: originalY
+          });
+
+          // Update the stats object
+          stats.smite = newProbability;
+          stats.smiteDisplay = `${newX}/${originalY}`;
+          stats.smitePercentage = `${newPercentage.toFixed(1)}%`;
+        } else {
+          // If there's no valid X/Y format, just use the raw value
+          stats.smite = smiteInfo.numerator;
+          stats.smiteDisplay = smiteInfo.display;  // This should be the raw string
+          stats.smitePercentage = smiteInfo.formattedPercentage;
+
+          // Double-check that we're preserving the correct format
+          console.log(`calculateStats: Setting smiteDisplay (no denominator) to: "${stats.smiteDisplay}"`);
+        }
+
+        // Set other weapon stats that don't get modified by motes
+        stats.stagger = weaponStats.Stagger;
+        stats.damageAttuneCap = weaponStats.DamageAttuneCap;
+        stats.virtueAttuneCap = weaponStats.VirtueAttuneCap;
+        stats.damageType = weapon.DamageType || "";
+        stats.art = weapon.Art || "";
+      }
+    } else {
+      // No motes, just set base stats
+      if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
+        stats.attackPower = weaponStats.Attack;
+        stats.chargedAttack = weaponStats.ChargedAttack;
+        stats.stagger = weaponStats.Stagger;
+        stats.smite = weaponStats.Smite;
+        stats.damageAttuneCap = weaponStats.DamageAttuneCap;
+        stats.virtueAttuneCap = weaponStats.VirtueAttuneCap;
+        stats.damageType = weapon.DamageType || "";
+        stats.art = weapon.Art || "";
+
+        // Log setting smiteDisplay in the "no motes" case
+        console.log(`calculateStats: Setting smiteDisplay (no motes) for ${weapon.LinkusAlias} to: "${weaponStats.Smite}"`);
+
+        // Set smite values without bonus - ensure we're using the raw string
+        const smiteInfo = parseSmiteValue(weaponStats.Smite);
+        stats.smite = smiteInfo.numerator;
+        stats.smiteDisplay = smiteInfo.display; // This should preserve the X/Y format
+        stats.smitePercentage = smiteInfo.formattedPercentage;
+
+        console.log(`calculateStats: Final smiteDisplay (no motes): "${stats.smiteDisplay}"`);
+      }
     }
 
     console.log(`calculateStats: Processed weapon ${weapon.LinkusAlias}`, weaponStats);
 
-    // Process weapon motes (if any) - always include motes from both weapons for virtue bonuses
+    // Process weapon motes for virtue bonuses - Keep existing code for virtue bonuses
     if (weapon.Motes && Array.isArray(weapon.Motes)) {
       weapon.Motes.forEach(mote => {
         if (mote?.Effect) {

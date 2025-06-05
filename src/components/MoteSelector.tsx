@@ -97,9 +97,71 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
     return equippedMotes;
   };
 
-  // Check if a weapon mote can be equipped
+  // Get all currently equipped pact motes
+  const getEquippedPactMotes = (): string[] => {
+    // Safety check to prevent undefined errors
+    if (!selectedItems || !selectedItems.pact?.Motes) {
+      return [];
+    }
+
+    const equippedMotes: string[] = [];
+
+    // Check pact motes
+    selectedItems.pact.Motes.forEach((mote) => {
+      if (mote?.MoteID) {
+        equippedMotes.push(mote.MoteID);
+      }
+    });
+
+    return equippedMotes;
+  };
+
+  // Check if a mote can be equipped
+  const canEquipMote = (mote: MoteItem): boolean => {
+    // For weapons, use the existing check
+    if (slotType === "weapon") {
+      return canEquipWeaponMote(mote);
+    }
+
+    // For pacts, check if the mote is already equipped on the pact
+    if (slotType === "pact") {
+      // Safety check
+      if (!selectedItems) {
+        console.warn("canEquipMote: selectedItems is undefined, allowing mote");
+        return true;
+      }
+
+      const equippedPactMotes = getEquippedPactMotes();
+
+      // If mote is already equipped on the pact, it cannot be equipped again
+      if (equippedPactMotes.includes(mote.MoteID)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Get the reason why a mote cannot be equipped (for tooltip/display)
+  const getMoteRestrictionReason = (mote: MoteItem): string | null => {
+    if (slotType === "weapon") {
+      return getMoteRestrictionReasonForWeapon(mote);
+    }
+
+    if (slotType === "pact") {
+      const equippedPactMotes = getEquippedPactMotes();
+
+      if (equippedPactMotes.includes(mote.MoteID)) {
+        return "Already equipped on this pact";
+      }
+    }
+
+    return null;
+  };
+
+  // Split the original functions to keep weapon-specific logic
   const canEquipWeaponMote = (mote: MoteItem): boolean => {
-    if (slotType !== "weapon") return true; // Pact motes don't have this restriction
+    if (slotType !== "weapon") return true;
 
     // Safety check
     if (!selectedItems) {
@@ -112,19 +174,10 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
     const equippedMotes = getEquippedWeaponMotes();
 
     // If mote is already equipped anywhere, it cannot be equipped again
-    if (equippedMotes.includes(mote.MoteID)) {
-      return false;
-    }
-
-    // Each weapon can have up to 3 motes, so we need to check if we're at the limit
-    // But this validation should be done at the weapon level, not here
-    // The MoteSelector doesn't know which specific weapon is being modified
-    // So we'll just check for duplicate motes here
-    return true;
+    return !equippedMotes.includes(mote.MoteID);
   };
 
-  // Get the reason why a mote cannot be equipped (for tooltip/display)
-  const getMoteRestrictionReason = (mote: MoteItem): string | null => {
+  const getMoteRestrictionReasonForWeapon = (mote: MoteItem): string | null => {
     if (slotType !== "weapon") return null;
 
     // Safety check
@@ -141,24 +194,11 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
     return null;
   };
 
-  // Helper function to get mote image
-  const getMoteImage = (mote: MoteItem) => {
-    return mote.Img?.Icon || null;
-  };
-
-  // Helper function to get mote effect as string
-  const getMoteEffect = (mote: MoteItem): string => {
-    return mote.Effect || "";
-  };
-
   const handleMoteSelect = (mote: MoteItem) => {
     console.log("MoteSelector: handleMoteSelect called with mote:", mote);
-    console.log(
-      "MoteSelector: canEquipWeaponMote result:",
-      canEquipWeaponMote(mote)
-    );
+    console.log("MoteSelector: canEquipMote result:", canEquipMote(mote));
 
-    if (canEquipWeaponMote(mote)) {
+    if (canEquipMote(mote)) {
       console.log("MoteSelector: Calling onMoteSelect with mote:", mote);
       onMoteSelect(mote);
       console.log("MoteSelector: Closing modal");
@@ -170,13 +210,27 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
     }
   };
 
+  // Helper function to get mote image - was missing and causing the crash
+  const getMoteImage = (mote: MoteItem): string | null => {
+    return mote.Img?.Icon || null;
+  };
+
+  // Helper function to get mote effect as a string - also missing
+  const getMoteEffect = (mote: MoteItem): string => {
+    if (!mote.Effect) return "";
+    if (typeof mote.Effect === "string") return mote.Effect;
+    return Array.isArray(mote.Effect)
+      ? mote.Effect.join(", ")
+      : String(mote.Effect);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={`Select ${slotType === "weapon" ? "Weapon" : "Pact"} Mote`}
     >
-      {/* Show weapon mote restriction info */}
+      {/* Show mote restriction info */}
       {slotType === "weapon" && selectedItems && (
         <div
           className="mb-4 p-3 rounded"
@@ -201,6 +255,31 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
         </div>
       )}
 
+      {/* Add pact mote restriction info */}
+      {slotType === "pact" && selectedItems && (
+        <div
+          className="mb-4 p-3 rounded"
+          style={{
+            backgroundColor: "var(--bg-dark)",
+            border: "1px solid var(--accent-subtle)",
+          }}
+        >
+          <div className="text-sm text-yellow-shiny font-medium mb-2">
+            Pact Mote Restriction
+          </div>
+          <div className="text-xs text-gray-300">
+            Each pact can equip up to 3 motes. The same mote cannot be equipped
+            multiple times on a pact. Currently equipped on pact:{" "}
+            {getEquippedPactMotes().length}/3
+          </div>
+          {getEquippedPactMotes().length > 0 && (
+            <div className="text-xs text-gray-400 mt-1">
+              Equipped motes: {getEquippedPactMotes().join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-center py-8">Loading motes...</div>
       ) : motes.length === 0 ? (
@@ -213,7 +292,7 @@ const MoteSelector: React.FC<MoteSelectorProps> = ({
       ) : (
         <div className="item-grid">
           {motes.map((mote) => {
-            const canEquip = canEquipWeaponMote(mote);
+            const canEquip = canEquipMote(mote);
             const restrictionReason = getMoteRestrictionReason(mote);
 
             return (

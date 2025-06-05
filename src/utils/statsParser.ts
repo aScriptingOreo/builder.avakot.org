@@ -82,7 +82,7 @@ export function parseWeaponStats(stats: any): {
   Attack: number;
   ChargedAttack: number;
   DamageAttuneCap: number;
-  Smite: number;
+  Smite: string; // Change from number to string to preserve raw value
   VirtueAttuneCap: number;
 } {
   if (!stats) {
@@ -92,7 +92,7 @@ export function parseWeaponStats(stats: any): {
       Attack: 0,
       ChargedAttack: 0,
       DamageAttuneCap: 0,
-      Smite: 0,
+      Smite: "0",  // Use string "0" instead of number 0
       VirtueAttuneCap: 0
     };
   }
@@ -102,14 +102,18 @@ export function parseWeaponStats(stats: any): {
   // Always use lvl30 stats if available, fallback to lvl0
   const levelStats = stats.lvl30 || stats.lvl0 || {};
 
-  console.log('parseWeaponStats: Using level stats:', levelStats);
+  // For Smite, preserve the raw string format (don't convert to number)
+  const rawSmite = stats.Smite || "0";
+
+  // Log the raw Smite value directly from stats
+  console.log(`parseWeaponStats: Raw Smite value from API: "${rawSmite}"`);
 
   const result = {
     Stagger: extractNumericValue(levelStats.Stagger),
     Attack: extractNumericValue(levelStats.Attack),
     ChargedAttack: extractNumericValue(levelStats.ChargedAttack),
     DamageAttuneCap: extractNumericValue(levelStats.DamageAttuneCap),
-    Smite: extractNumericValue(stats.Smite),
+    Smite: rawSmite,  // Store the raw string value
     VirtueAttuneCap: extractNumericValue(stats.VirtueAttuneCap)
   };
 
@@ -167,12 +171,22 @@ export function parsePactStats(stats: any): {
 export function parseMoteEffects(effect: string | string[] | undefined): {
   virtueBonus: { Grace: number; Spirit: number; Courage: number };
   otherEffects: string[];
+  weaponBonuses: {
+    attackDamage: number;
+    chargedAttackDamage: number;
+    smiteChancePercent: number;
+  };
 } {
   const virtueBonus = { Grace: 0, Spirit: 0, Courage: 0 };
   const otherEffects: string[] = [];
+  const weaponBonuses = {
+    attackDamage: 0,
+    chargedAttackDamage: 0,
+    smiteChancePercent: 0
+  };
 
   // Handle undefined or null
-  if (!effect) return { virtueBonus, otherEffects };
+  if (!effect) return { virtueBonus, otherEffects, weaponBonuses };
 
   // Convert single string to array for consistent processing
   const effects = Array.isArray(effect) ? effect : [effect];
@@ -191,13 +205,113 @@ export function parseMoteEffects(effect: string | string[] | undefined): {
       if (virtueBonus[normalizedType] !== undefined) {
         virtueBonus[normalizedType] += value;
       }
-    } else {
-      // If not a virtue bonus, keep as other effect
+    }
+    // Check for "X Fully-Charged Heavy Damage"
+    else if (effectStr.match(/Fully-Charged Heavy Damage/i)) {
+      const damageMatch = effectStr.match(/(\d+)\s+Fully-Charged Heavy Damage/i);
+      if (damageMatch) {
+        const value = parseInt(damageMatch[1], 10);
+        weaponBonuses.chargedAttackDamage += value;
+      }
+      otherEffects.push(effectStr);
+    }
+    // Check for "X Attack Damage"
+    else if (effectStr.match(/Attack Damage/i)) {
+      const damageMatch = effectStr.match(/(\d+)\s+Attack Damage/i);
+      if (damageMatch) {
+        const value = parseInt(damageMatch[1], 10);
+        weaponBonuses.attackDamage += value;
+      }
+      otherEffects.push(effectStr);
+    }
+    // Check for "X% Smite Chance"
+    else if (effectStr.match(/Smite Chance/i)) {
+      const smiteMatch = effectStr.match(/(\d+(?:\.\d+)?)\s*%\s+Smite Chance/i);
+      if (smiteMatch) {
+        const percentValue = parseFloat(smiteMatch[1]);
+        weaponBonuses.smiteChancePercent += percentValue;
+      }
+      otherEffects.push(effectStr);
+    }
+    // If not a recognized bonus, keep as other effect
+    else {
       otherEffects.push(effectStr);
     }
   });
 
-  return { virtueBonus, otherEffects };
+  return { virtueBonus, otherEffects, weaponBonuses };
+}
+
+/**
+ * Extract Smite values from "X in Y chances" format ("x/y")
+ * Correctly interprets as X successes in Y attempts
+ */
+export function parseSmiteValue(smiteStr: string | undefined | null): {
+  numerator: number;
+  denominator: number;
+  percentage: number;
+  display: string;
+  formattedPercentage: string;
+} {
+  if (!smiteStr) {
+    return {
+      numerator: 0,
+      denominator: 0,
+      percentage: 0,
+      display: "0",
+      formattedPercentage: "0%"
+    };
+  }
+
+  // Convert to string if it's not already a string
+  const smiteString = String(smiteStr);
+
+  // Debug log for raw smite value
+  console.log("parseSmiteValue: Raw value from API:", smiteString);
+
+  // Match x/y pattern (X in Y chances)
+  const match = smiteString.match(/(\d+)\/(\d+)/);
+
+  if (match) {
+    const numerator = parseInt(match[1], 10);
+    const denominator = parseInt(match[2], 10);
+
+    // Calculate as X successes in Y attempts (probability)
+    const percentage = denominator > 0 ? (numerator / denominator) * 100 : 0;
+
+    const result = {
+      numerator,
+      denominator,
+      percentage,
+      display: `${numerator}/${denominator}`, // Keep exact original format
+      formattedPercentage: `${percentage.toFixed(1)}%`
+    };
+
+    console.log("parseSmiteValue: Parsed result:", result);
+    return result;
+  }
+
+  // If format doesn't match, try to parse as single number
+  const singleNumber = parseInt(smiteString, 10);
+  if (!isNaN(singleNumber)) {
+    return {
+      numerator: singleNumber,
+      denominator: 100,
+      percentage: singleNumber,
+      display: String(singleNumber),
+      formattedPercentage: `${singleNumber}%`
+    };
+  }
+
+  // Default return if parsing fails
+  console.log("parseSmiteValue: Failed to parse:", smiteString);
+  return {
+    numerator: 0,
+    denominator: 0,
+    percentage: 0,
+    display: "0",
+    formattedPercentage: "0%"
+  };
 }
 
 // Calculate total virtue bonuses from all equipped items

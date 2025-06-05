@@ -237,6 +237,35 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       }
     }
 
+    // For pact slots, check if the mote is already equipped on the pact
+    if (slotType === "pact" && selectedItem) {
+      const currentMotes = selectedItem.Motes || [];
+
+      // Check if this mote is already equipped on the pact
+      const moteExists = currentMotes.some(
+        (m) => m && m.MoteID === mote.MoteID
+      );
+
+      if (moteExists) {
+        alert(
+          "This mote is already equipped on this pact. Each mote can only be used once per pact."
+        );
+        setMoteSelector({ isOpen: false, slotIndex: null });
+        return;
+      }
+
+      // Check if we're at the 3-mote limit for the pact
+      const filledSlots = currentMotes.filter((m) => m && m.MoteID).length;
+
+      if (moteSelector.slotIndex >= currentMotes.length && filledSlots >= 3) {
+        alert(
+          "This pact already has 3 motes equipped. Remove a mote first or replace an existing one."
+        );
+        setMoteSelector({ isOpen: false, slotIndex: null });
+        return;
+      }
+    }
+
     onMoteSelect(moteSelector.slotIndex, mote);
     setMoteSelector({ isOpen: false, slotIndex: null });
   };

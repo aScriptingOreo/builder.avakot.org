@@ -335,10 +335,19 @@ export const resolvers = {
       }));
     },
 
+    // Add specific debug logs to pact query
     pact: async (_: any, { LinkusAlias }: { LinkusAlias: string }) => {
+      console.log(`GraphQL: pact query for LinkusAlias: ${LinkusAlias}`);
       const data = await fetchData('MPS');
+      console.log(`GraphQL: Found ${data.length} pacts in data`);
+
       const pact = data.find(p => p.LinkusAlias === LinkusAlias);
-      if (!pact) return null;
+      if (!pact) {
+        console.log(`GraphQL: No pact found for LinkusAlias: ${LinkusAlias}`);
+        return null;
+      }
+
+      console.log(`GraphQL: Found pact for ${LinkusAlias}:`, pact);
 
       const defaultDict = await fetchData('defaultDict');
       return {
