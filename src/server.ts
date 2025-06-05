@@ -6,11 +6,21 @@ import { resolvers, typeDefs } from './graphql/schema.js';
 async function startServer() {
   const app = express();
 
-  // Enable CORS
+  // Enable CORS - updated to accept Docker environment
   app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://builderclient:3000',
+      process.env.ALLOWED_ORIGIN || '*'
+    ].filter(Boolean),
     credentials: true,
   }));
+
+  // Serve static files for production
+  if (process.env.NODE_ENV === 'production') {
+    app.use(express.static('dist'));
+  }
 
   // Create Apollo Server
   const server = new ApolloServer({
@@ -24,18 +34,24 @@ async function startServer() {
   });
 
   await server.start();
+
+  // Always use root path when USE_ROOT_PATH is true for proper Traefik routing
+  const graphqlPath = process.env.USE_ROOT_PATH === 'true' ? '/' : '/graphql';
+
+  console.log(`GraphQL endpoint will be served at path: ${graphqlPath}`);
+
   server.applyMiddleware({
     app,
-    path: '/graphql',
+    path: graphqlPath,
     cors: false // We handle CORS above
   });
 
-  const PORT = process.env.PORT || 5501; // Updated to use port 5501
+  const PORT = process.env.PORT || 5501;
+  const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
 
-  app.listen(PORT, () => {
-    console.log(`🚀 GraphQL Server ready at http://localhost:${PORT}${server.graphqlPath}`);
-    console.log(`📊 GraphQL Playground available at http://localhost:${PORT}${server.graphqlPath}`);
-    console.log(`🎯 Frontend should proxy GraphQL requests from http://localhost:3000/graphql`);
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 GraphQL Server ready at http://${HOST}:${PORT}${server.graphqlPath}`);
+    console.log(`📊 GraphQL Playground available at http://${HOST}:${PORT}${server.graphqlPath}`);
   });
 }
 

@@ -12,10 +12,15 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // Allow connections from outside the container
     port: 3000,
+    strictPort: true, // Fail if port is in use
+    allowedHosts: ['builder.7thseraph.org'], // Remove the api subdomain
     proxy: {
       '/graphql': {
-        target: 'http://localhost:5501', // Updated to use port 5501
+        target: process.env.NODE_ENV === 'production'
+          ? 'http://builderserver:5501'
+          : 'http://localhost:5501',
         changeOrigin: true,
       },
     },

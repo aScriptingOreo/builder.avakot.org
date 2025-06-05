@@ -1,59 +1,61 @@
-version: "3.8"
-
 networks:
   proxy:
     external: true # Connect to existing proxy network if available
-  internal:
-    external: false # Private network for inter-service communication
-    default: true # Default network for services not explicitly connected to proxy
-
-volumes:
-  node_modules: # Named volume for shared node_modules
-    name: soulbuilder-node-modules
 
 services:
   # Frontend - Vite React app
-  frontend:
+  builderclient:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: soulbuilder-frontend
+    container_name: builderclient
     command: bun run dev
     volumes:
       - ./:/app
-      - node_modules:/app/node_modules # Use the named volume
+      - /app/node_modules
     environment:
       - NODE_ENV=development
       - VITE_API_URL=${DOMAIN:-http://localhost}/graphql
     networks:
       - proxy
-      - internal
+      - default
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.services.soulbuilder-frontend.loadbalancer.server.port=3000"
+      - "traefik.http.services.builderclient.loadbalancer.server.port=3000"
       # Main app route - serves the React app
-      - "traefik.http.routers.soulbuilder-frontend.rule=Host(`wiki.avakot.org`) && PathPrefix(`/app/builder`)"
-      - "traefik.http.routers.soulbuilder-frontend.entrypoints=http"
-      - "traefik.http.routers.soulbuilder-frontend.priority=10"
+      - "traefik.http.routers.builderclient.rule=Host(`builder.7thseraph.org`)" 
+      - "traefik.http.routers.builderclient.entrypoints=https"
+      - "traefik.http.routers.builderclient.tls=true"
+      - "traefik.http.routers.builderclient.tls.certresolver=letsencrypt"
+    depends_on:
+      - builderserver
 
   # Backend - GraphQL server
-  server:
+  builderserver:
     build:
       context: .
       dockerfile: Dockerfile.server
-    container_name: soulbuilder-server
+    container_name: builderserver
     command: bun run server
     volumes:
       - ./:/app
-      - node_modules:/app/node_modules # Use the named volume
+      - /app/node_modules
     environment:
       - NODE_ENV=development
+      - PORT=5501
+      - HOST=0.0.0.0
+      - USE_ROOT_PATH=false
+      - ALLOWED_ORIGIN=http://builder.7thseraph.org
     networks:
-      - internal # Only connected to internal network - not directly accessible
+      - proxy
+      - default
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.services.soulbuilder-server.loadbalancer.server.port=5501"
-      # GraphQL endpoint - only accessible via the DOMAIN path
-      - "traefik.http.routers.soulbuilder-server.rule=Host(`${DOMAIN:-soulbuilder.local}`) && PathPrefix(`/graphql`)"
+      - "traefik.http.services.builderserver.loadbalancer.server.port=5501"
+      # Use the main domain with a path prefix instead of a subdomain
+      - "traefik.http.routers.builderserver.rule=Host(`builder.7thseraph.org`) && PathPrefix(`/graphql`)"
+      - "traefik.http.routers.builderserver.entrypoints=https"
+      - "traefik.http.routers.builderserver.tls=true"
+      - "traefik.http.routers.builderserver.tls.certresolver=letsencrypt"
