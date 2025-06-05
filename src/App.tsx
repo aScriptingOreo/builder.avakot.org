@@ -280,15 +280,17 @@ const App: React.FC = () => {
             onImport={(importedItems) => setSelectedItems(importedItems)}
           />
 
-          {/* Ko-Fi button */}
+          {/* Ko-Fi button - Fixed width to prevent squishing */}
           <a
             href="https://ko-fi.com/ascriptingoreo"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-white transition-transform hover:scale-105"
+            className="flex items-center gap-2 px-5 py-2 rounded-md text-white transition-transform hover:scale-105"
             style={{
               backgroundColor: "var(--courage-color)",
               boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+              minWidth: "130px", // Added fixed minimum width
+              justifyContent: "center", // Center content horizontally
             }}
           >
             {/* Ko-Fi cup icon */}
@@ -309,7 +311,7 @@ const App: React.FC = () => {
               <line x1="10" y1="1" x2="10" y2="4"></line>
               <line x1="14" y1="1" x2="14" y2="4"></line>
             </svg>
-            <span className="font-medium">Send Love</span>
+            <span className="font-medium whitespace-nowrap">Send Love</span>
           </a>
         </div>
 

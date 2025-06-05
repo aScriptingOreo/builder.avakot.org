@@ -1,0 +1,19 @@
+FROM oven/bun:1.0 as base
+
+# Set working directory
+WORKDIR /app
+
+# Copy only package.json (no lockfile)
+COPY package.json ./
+
+# Install dependencies without using lockfile
+RUN BUN_INSTALL_CACHE_DIR=/tmp/bun-cache bun install
+
+# Copy the rest of the code (from the root of the project)
+COPY . .
+
+# Expose port
+EXPOSE 5501
+
+# Default command
+CMD ["bun", "run", "server"]

@@ -215,12 +215,13 @@ export function parseMoteEffects(effect: string | string[] | undefined): {
       }
       otherEffects.push(effectStr);
     }
-    // Check for "X Attack Damage"
+    // Check for "X Attack Damage" - now adds to both attack and charged attack
     else if (effectStr.match(/Attack Damage/i)) {
       const damageMatch = effectStr.match(/(\d+)\s+Attack Damage/i);
       if (damageMatch) {
         const value = parseInt(damageMatch[1], 10);
         weaponBonuses.attackDamage += value;
+        weaponBonuses.chargedAttackDamage += value; // Also add to charged attack
       }
       otherEffects.push(effectStr);
     }

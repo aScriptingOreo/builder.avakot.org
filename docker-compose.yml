@@ -1,0 +1,59 @@
+version: "3.8"
+
+networks:
+  proxy:
+    external: true # Connect to existing proxy network if available
+  internal:
+    external: false # Private network for inter-service communication
+    default: true # Default network for services not explicitly connected to proxy
+
+volumes:
+  node_modules: # Named volume for shared node_modules
+    name: soulbuilder-node-modules
+
+services:
+  # Frontend - Vite React app
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: soulbuilder-frontend
+    command: bun run dev
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules # Use the named volume
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=${DOMAIN:-http://localhost}/graphql
+    networks:
+      - proxy
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.services.soulbuilder-frontend.loadbalancer.server.port=3000"
+      # Main app route - serves the React app
+      - "traefik.http.routers.soulbuilder-frontend.rule=Host(`wiki.avakot.org`) && PathPrefix(`/app/builder`)"
+      - "traefik.http.routers.soulbuilder-frontend.entrypoints=http"
+      - "traefik.http.routers.soulbuilder-frontend.priority=10"
+
+  # Backend - GraphQL server
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: soulbuilder-server
+    command: bun run server
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules # Use the named volume
+    environment:
+      - NODE_ENV=development
+    networks:
+      - internal # Only connected to internal network - not directly accessible
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.services.soulbuilder-server.loadbalancer.server.port=5501"
+      # GraphQL endpoint - only accessible via the DOMAIN path
+      - "traefik.http.routers.soulbuilder-server.rule=Host(`${DOMAIN:-soulbuilder.local}`) && PathPrefix(`/graphql`)"
