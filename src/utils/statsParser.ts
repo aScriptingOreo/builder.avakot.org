@@ -6,20 +6,25 @@
 export function extractNumericValue(value: string | undefined | null): number {
   if (!value) return 0;
 
-  // Handle fraction format like "3/50" - we only care about the first number
-  if (value.includes('/')) {
-    const parts = value.split('/');
-    return parseInt(parts[0], 10) || 0;
+  // Handle string values that might be empty or "0"
+  if (typeof value === 'string') {
+    if (value.trim() === '' || value.trim() === '0') return 0;
+
+    // Handle fraction format like "3/50" - we only care about the first number
+    if (value.includes('/')) {
+      const parts = value.split('/');
+      return parseInt(parts[0], 10) || 0;
+    }
+
+    // Extract numbers from strings like "10 Physical Defence" or just "10"
+    const matches = value.match(/^(\d+)/);
+    if (matches && matches[1]) {
+      return parseInt(matches[1], 10);
+    }
   }
 
-  // Extract numbers from strings like "10 Physical Defence"
-  const matches = value.match(/^(\d+)/);
-  if (matches && matches[1]) {
-    return parseInt(matches[1], 10);
-  }
-
-  // Try direct parsing
-  const num = parseInt(value, 10);
+  // Try direct parsing for numbers
+  const num = parseFloat(String(value));
   return isNaN(num) ? 0 : num;
 }
 
@@ -30,11 +35,25 @@ export function parseArmorStats(stats: any): {
   StabilityIncrease: number;
   VirtueBonus: { type: string; value: number } | null;
 } {
-  if (!stats) return { PhysicalDefence: 0, MagickDefence: 0, StabilityIncrease: 0, VirtueBonus: null };
+  if (!stats) {
+    console.log('parseArmorStats: No stats provided');
+    return { PhysicalDefence: 0, MagickDefence: 0, StabilityIncrease: 0, VirtueBonus: null };
+  }
+
+  console.log('parseArmorStats: Processing stats:', stats);
 
   const physicalDefence = extractNumericValue(stats.PhysicalDefence);
   const magickDefence = extractNumericValue(stats.MagickDefence);
   const stabilityIncrease = extractNumericValue(stats.StabilityIncrease);
+
+  console.log('parseArmorStats: Extracted values:', {
+    physicalDefence,
+    magickDefence,
+    stabilityIncrease,
+    rawPhysicalDefence: stats.PhysicalDefence,
+    rawMagickDefence: stats.MagickDefence,
+    rawStabilityIncrease: stats.StabilityIncrease
+  });
 
   // Process virtue bonus from totem
   let virtueBonus = null;
@@ -43,14 +62,18 @@ export function parseArmorStats(stats: any): {
       type: stats.Virtue.Type || 'Unknown',
       value: extractNumericValue(stats.Virtue.Value)
     };
+    console.log('parseArmorStats: Found virtue bonus:', virtueBonus);
   }
 
-  return {
+  const result = {
     PhysicalDefence: physicalDefence,
     MagickDefence: magickDefence,
     StabilityIncrease: stabilityIncrease,
     VirtueBonus: virtueBonus
   };
+
+  console.log('parseArmorStats: Final result:', result);
+  return result;
 }
 
 // Process weapon stats (focusing on lvl30)
@@ -63,6 +86,7 @@ export function parseWeaponStats(stats: any): {
   VirtueAttuneCap: number;
 } {
   if (!stats) {
+    console.log('parseWeaponStats: No stats provided');
     return {
       Stagger: 0,
       Attack: 0,
@@ -73,10 +97,14 @@ export function parseWeaponStats(stats: any): {
     };
   }
 
+  console.log('parseWeaponStats: Processing stats:', stats);
+
   // Always use lvl30 stats if available, fallback to lvl0
   const levelStats = stats.lvl30 || stats.lvl0 || {};
 
-  return {
+  console.log('parseWeaponStats: Using level stats:', levelStats);
+
+  const result = {
     Stagger: extractNumericValue(levelStats.Stagger),
     Attack: extractNumericValue(levelStats.Attack),
     ChargedAttack: extractNumericValue(levelStats.ChargedAttack),
@@ -84,6 +112,9 @@ export function parseWeaponStats(stats: any): {
     Smite: extractNumericValue(stats.Smite),
     VirtueAttuneCap: extractNumericValue(stats.VirtueAttuneCap)
   };
+
+  console.log('parseWeaponStats: Final result:', result);
+  return result;
 }
 
 // Process pact stats
@@ -96,6 +127,7 @@ export function parsePactStats(stats: any): {
   VirtueBonus: { type: string; value: number } | null;
 } {
   if (!stats) {
+    console.log('parsePactStats: No stats provided');
     return {
       BonusHP: 0,
       PhysicalDefence: 0,
@@ -106,6 +138,8 @@ export function parsePactStats(stats: any): {
     };
   }
 
+  console.log('parsePactStats: Processing stats:', stats);
+
   // Process virtue bonus
   let virtueBonus = null;
   if (stats.BonusVirtue) {
@@ -113,9 +147,10 @@ export function parsePactStats(stats: any): {
       type: stats.BonusVirtue.Type || 'Unknown',
       value: extractNumericValue(stats.BonusVirtue.Value)
     };
+    console.log('parsePactStats: Found virtue bonus:', virtueBonus);
   }
 
-  return {
+  const result = {
     BonusHP: extractNumericValue(stats.BonusHP),
     PhysicalDefence: extractNumericValue(stats.PhysicalDefence),
     MagickDefence: extractNumericValue(stats.MagickDefence),
@@ -123,6 +158,9 @@ export function parsePactStats(stats: any): {
     UnarmedDmg: extractNumericValue(stats.UnarmedDmg || stats.UnnarmedDmg), // Handle both spellings
     VirtueBonus: virtueBonus
   };
+
+  console.log('parsePactStats: Final result:', result);
+  return result;
 }
 
 // Parse mote effects and return virtue bonuses

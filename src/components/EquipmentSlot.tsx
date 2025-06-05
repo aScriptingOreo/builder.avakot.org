@@ -65,7 +65,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         };
         const slotFilter = armorSlotMap[slotName];
         if (!slotFilter) return "";
-        return `{ armorsBySlot(slot: "${slotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set } }`;
+        return `{ armorsBySlot(slot: "${slotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
 
       case "weapon":
         // Use weaponsBySlot query with proper slot names
@@ -75,10 +75,10 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         };
         const weaponSlotFilter = weaponSlotMap[slotName];
         if (!weaponSlotFilter) return "";
-        return `{ weaponsBySlot(slot: "${weaponSlotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity } }`;
+        return `{ weaponsBySlot(slot: "${weaponSlotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity Stats { Smite lvl0 { Stagger Attack ChargedAttack DamageAttuneCap } lvl30 { Stagger Attack ChargedAttack DamageAttuneCap } VirtueAttuneCap } } }`;
 
       case "pact":
-        return "{ pacts { LinkusAlias DisplayName LinkusMap Img { Preview Icon } } }";
+        return `{ pacts { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Stats { BonusHP BonusVirtue { Type Value } UnarmedDmg MagickDefence PhysicalDefence StabilityIncrease } } }`;
 
       default:
         return "";

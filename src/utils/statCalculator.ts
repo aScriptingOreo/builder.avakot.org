@@ -1,4 +1,5 @@
 import { SelectedItems } from "../types/build";
+import { parseArmorStats, parseMoteEffects, parsePactStats, parseWeaponStats } from "./statsParser";
 
 // Interface for consolidated stats
 export interface ConsolidatedStats {
@@ -65,6 +66,8 @@ export const calculateStats = (selectedItems: SelectedItems): ConsolidatedStats 
     hasPact: false
   };
 
+  console.log("calculateStats: Processing selectedItems", selectedItems);
+
   // Process armor items (helm, upperBody, lowerBody, totem)
   const armorItems = [
     selectedItems.helm,
@@ -76,26 +79,36 @@ export const calculateStats = (selectedItems: SelectedItems): ConsolidatedStats 
   // Count armor pieces
   stats.armorPieces = armorItems.length;
 
-  // Process each armor item
+  // Process each armor item using statsParser
   armorItems.forEach(item => {
     if (!item) return;
 
-    // Add defensive stats
-    if (item.Stats) {
-      stats.physicalDefence += parseStatValue(item.Stats.PhysicalDefence);
-      stats.magickDefence += parseStatValue(item.Stats.MagickDefence);
-      stats.stabilityIncrease += parseStatValue(item.Stats.StabilityIncrease);
-    }
+    console.log(`calculateStats: Processing armor item ${item.LinkusAlias}, has Stats:`, !!item.Stats);
 
-    // Handle totem virtue bonuses
-    if (item.Slot === 'Totem' && item.Stats?.Virtue) {
-      const virtueType = item.Stats.Virtue.Type;
-      const virtueValue = parseStatValue(item.Stats.Virtue.Value);
+    const armorStats = parseArmorStats(item.Stats);
+
+    // Accumulate the stats
+    stats.physicalDefence += armorStats.PhysicalDefence;
+    stats.magickDefence += armorStats.MagickDefence;
+    stats.stabilityIncrease += armorStats.StabilityIncrease;
+
+    // Handle virtue bonuses from totems
+    if (armorStats.VirtueBonus) {
+      const virtueType = armorStats.VirtueBonus.type;
+      const virtueValue = armorStats.VirtueBonus.value;
 
       if (virtueType === 'Grace') stats.graceValue += virtueValue;
       else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
       else if (virtueType === 'Courage') stats.courageValue += virtueValue;
+      else if (virtueType === 'All Virtues') {
+        stats.graceValue += virtueValue;
+        stats.spiritValue += virtueValue;
+        stats.courageValue += virtueValue;
+      }
     }
+
+    console.log(`calculateStats: Processed armor item ${item.LinkusAlias}`, armorStats);
+    console.log(`calculateStats: Running totals - Physical: ${stats.physicalDefence}, Magick: ${stats.magickDefence}, Stability: ${stats.stabilityIncrease}`);
   });
 
   // Process weapon items and their motes
@@ -106,90 +119,86 @@ export const calculateStats = (selectedItems: SelectedItems): ConsolidatedStats 
 
   stats.weaponsEquipped = weaponItems.length;
 
-  // Process each weapon
-  weaponItems.forEach(weapon => {
-    if (!weapon || !weapon.Stats) return;
+  // Process each weapon using statsParser
+  weaponItems.forEach((weapon, index) => {
+    if (!weapon) return;
 
-    // Use lvl30 stats if available, otherwise lvl0
-    const weaponStats = weapon.Stats.lvl30 || weapon.Stats.lvl0;
-    if (weaponStats) {
-      stats.attackPower += parseStatValue(weaponStats.Attack);
-      stats.chargedAttack += parseStatValue(weaponStats.ChargedAttack);
-      stats.stagger += parseStatValue(weaponStats.Stagger);
+    console.log(`calculateStats: Processing weapon ${weapon.LinkusAlias}, has Stats:`, !!weapon.Stats);
+
+    const weaponStats = parseWeaponStats(weapon.Stats);
+
+    // Only add primary weapon stats to avoid double counting
+    if (index === 0) { // First weapon (primary)
+      stats.attackPower += weaponStats.Attack;
+      stats.chargedAttack += weaponStats.ChargedAttack;
+      stats.stagger += weaponStats.Stagger;
     }
 
-    // Add smite damage if available
-    if (weapon.Stats.Smite) {
-      // This could be added to a separate property if needed
-      // For now we'll just add it to attack power as an example
-      stats.attackPower += parseStatValue(weapon.Stats.Smite);
-    }
+    console.log(`calculateStats: Processed weapon ${weapon.LinkusAlias}`, weaponStats);
 
     // Process weapon motes (if any)
     if (weapon.Motes && Array.isArray(weapon.Motes)) {
-      // Limit to 3 motes per weapon
-      const motes = weapon.Motes.slice(0, 3);
+      weapon.Motes.forEach(mote => {
+        if (mote?.Effect) {
+          const { virtueBonus } = parseMoteEffects(mote.Effect);
+          stats.graceValue += virtueBonus.Grace;
+          stats.spiritValue += virtueBonus.Spirit;
+          stats.courageValue += virtueBonus.Courage;
 
-      // Process each mote's effect
-      motes.forEach(mote => {
-        if (mote.Effect) {
-          // Parse mote effect and apply to stats
-          // This is a simplified example - you would need to implement
-          // more sophisticated parsing for actual mote effects
-          if (mote.Effect.includes('Counter Damage')) {
-            // Example: "15 Counter Damage"
-            const counterDamage = parseFloat(mote.Effect.split(' ')[0]);
-            if (!isNaN(counterDamage)) {
-              stats.attackPower += counterDamage * 0.1; // Just an example calculation
-            }
-          }
-          // Add more effect parsing as needed
+          console.log(`calculateStats: Processed weapon mote ${mote.MoteID}`, virtueBonus);
         }
       });
     }
   });
 
-  // Process pact and its motes
+  // Process pact and its motes using statsParser
   const pact = selectedItems.pact;
   if (pact) {
     stats.hasPact = true;
 
-    if (pact.Stats) {
-      // Add pact bonuses
-      stats.bonusHP += parseStatValue(pact.Stats.BonusHP);
-      stats.physicalDefence += parseStatValue(pact.Stats.PhysicalDefence);
-      stats.magickDefence += parseStatValue(pact.Stats.MagickDefence);
-      stats.stabilityIncrease += parseStatValue(pact.Stats.StabilityIncrease);
+    console.log(`calculateStats: Processing pact ${pact.LinkusAlias}, has Stats:`, !!pact.Stats);
 
-      // Add virtue bonuses from pact
-      if (pact.Stats.BonusVirtue) {
-        const virtueType = pact.Stats.BonusVirtue.Type;
-        const virtueValue = parseStatValue(pact.Stats.BonusVirtue.Value);
+    const pactStats = parsePactStats(pact.Stats);
 
-        if (virtueType === 'Grace') stats.graceValue += virtueValue;
-        else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
-        else if (virtueType === 'Courage') stats.courageValue += virtueValue;
+    // Accumulate pact stats
+    stats.bonusHP += pactStats.BonusHP;
+    stats.physicalDefence += pactStats.PhysicalDefence;
+    stats.magickDefence += pactStats.MagickDefence;
+    stats.stabilityIncrease += pactStats.StabilityIncrease;
+
+    // Handle virtue bonuses from pact
+    if (pactStats.VirtueBonus) {
+      const virtueType = pactStats.VirtueBonus.type;
+      const virtueValue = pactStats.VirtueBonus.value;
+
+      if (virtueType === 'Grace') stats.graceValue += virtueValue;
+      else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
+      else if (virtueType === 'Courage') stats.courageValue += virtueValue;
+      else if (virtueType === 'All Virtues') {
+        stats.graceValue += virtueValue;
+        stats.spiritValue += virtueValue;
+        stats.courageValue += virtueValue;
       }
     }
 
+    console.log(`calculateStats: Processed pact ${pact.LinkusAlias}`, pactStats);
+
     // Process pact motes (if any)
     if (pact.Motes && Array.isArray(pact.Motes)) {
-      // Limit to 3 motes per pact
-      const motes = pact.Motes.slice(0, 3);
+      pact.Motes.forEach(mote => {
+        if (mote?.Effect) {
+          const { virtueBonus } = parseMoteEffects(mote.Effect);
+          stats.graceValue += virtueBonus.Grace;
+          stats.spiritValue += virtueBonus.Spirit;
+          stats.courageValue += virtueBonus.Courage;
 
-      // Process each mote's effect
-      motes.forEach(mote => {
-        if (mote.Effect) {
-          // Parse mote effect and apply to stats
-          // More sophisticated parsing would be needed here
-          if (mote.Effect.includes('Grace Flows')) {
-            stats.graceValue += 1; // Example effect
-          }
-          // Add more effect parsing as needed
+          console.log(`calculateStats: Processed pact mote ${mote.MoteID}`, virtueBonus);
         }
       });
     }
   }
+
+  console.log("calculateStats: Final calculated stats", stats);
 
   return stats;
 };

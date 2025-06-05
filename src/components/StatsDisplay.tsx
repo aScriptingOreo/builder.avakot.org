@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { SelectedItems } from "../types/build";
 import { resolveDisplayName } from "../utils/api";
-import {
-  convertStatsToConsolidated,
-  parseMoteEffects,
-} from "../utils/statsParser";
+import { calculateStats, formatStatValue } from "../utils/statCalculator";
+import { parseMoteEffects } from "../utils/statsParser";
 
 interface StatsDisplayProps {
   selectedItems: SelectedItems;
@@ -14,6 +12,9 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   const [itemDisplayNames, setItemDisplayNames] = useState<
     Record<string, string>
   >({});
+
+  // Debug logging to ensure component updates
+  console.log("StatsDisplay: selectedItems changed", selectedItems);
 
   // Resolve display names for selected items
   useEffect(() => {
@@ -32,46 +33,13 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
     };
 
     resolveNames();
-  }, [selectedItems]);
+  }, [selectedItems, itemDisplayNames]);
 
-  // Use the proper stats calculation from statsParser
-  const calculateConsolidatedStats = () => {
-    const armorItems = [
-      selectedItems.helm,
-      selectedItems.upperBody,
-      selectedItems.lowerBody,
-      selectedItems.totem,
-    ].filter(Boolean);
+  // Use the centralized stats calculation from statCalculator
+  const stats = calculateStats(selectedItems);
 
-    const weaponItems = [selectedItems.primary, selectedItems.sidearm].filter(
-      Boolean
-    );
-
-    const pactItem = selectedItems.pact;
-
-    // Collect all motes from equipped weapons and pacts
-    const motes: any[] = [];
-
-    // Add weapon motes
-    weaponItems.forEach((weapon) => {
-      if (weapon.Motes && Array.isArray(weapon.Motes)) {
-        weapon.Motes.forEach((mote) => {
-          if (mote) motes.push(mote);
-        });
-      }
-    });
-
-    // Add pact motes
-    if (pactItem?.Motes && Array.isArray(pactItem.Motes)) {
-      pactItem.Motes.forEach((mote) => {
-        if (mote) motes.push(mote);
-      });
-    }
-
-    return convertStatsToConsolidated(armorItems, weaponItems, pactItem, motes);
-  };
-
-  const stats = calculateConsolidatedStats();
+  // Debug logging to see calculated stats
+  console.log("StatsDisplay: calculated stats", stats);
 
   // Calculate special mote effects that aren't virtue bonuses
   const getSpecialMoteEffects = () => {
@@ -105,7 +73,12 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   const specialEffects = getSpecialMoteEffects();
 
   const getItemDisplayName = (item: any) => {
-    return itemDisplayNames[item?.LinkusAlias] || item?.LinkusAlias || "None";
+    return (
+      itemDisplayNames[item?.LinkusAlias] ||
+      item?.DisplayName ||
+      item?.LinkusAlias ||
+      "None"
+    );
   };
 
   return (
@@ -119,25 +92,25 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
           <div>
             <div className="text-sm text-gray-400">Physical Defence</div>
             <div className="text-xl font-bold text-orange-400">
-              {stats.physicalDefence}
+              {formatStatValue(stats.physicalDefence)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Magick Defence</div>
             <div className="text-xl font-bold text-purple-400">
-              {stats.magickDefence}
+              {formatStatValue(stats.magickDefence)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Stability Increase</div>
             <div className="text-xl font-bold text-green-400">
-              {stats.stabilityIncrease}
+              {formatStatValue(stats.stabilityIncrease)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Bonus HP</div>
             <div className="text-xl font-bold text-red-400">
-              {stats.bonusHP}
+              {formatStatValue(stats.bonusHP)}
             </div>
           </div>
         </div>
@@ -150,19 +123,19 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
           <div>
             <div className="text-sm text-gray-400">Attack Power</div>
             <div className="text-xl font-bold text-red-400">
-              {stats.attackPower}
+              {formatStatValue(stats.attackPower)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Charged Attack</div>
             <div className="text-xl font-bold text-yellow-400">
-              {stats.chargedAttack}
+              {formatStatValue(stats.chargedAttack)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Stagger</div>
             <div className="text-xl font-bold text-orange-400">
-              {stats.stagger}
+              {formatStatValue(stats.stagger)}
             </div>
           </div>
         </div>
@@ -177,19 +150,19 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
           <div>
             <div className="text-sm text-gray-400">Grace</div>
             <div className="text-xl font-bold text-grace">
-              +{stats.graceValue}
+              +{formatStatValue(stats.graceValue)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Spirit</div>
             <div className="text-xl font-bold text-spirit">
-              +{stats.spiritValue}
+              +{formatStatValue(stats.spiritValue)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Courage</div>
             <div className="text-xl font-bold text-courage">
-              +{stats.courageValue}
+              +{formatStatValue(stats.courageValue)}
             </div>
           </div>
         </div>
