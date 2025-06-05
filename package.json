@@ -9,12 +9,13 @@
     "server": "bun run --hot src/server.ts"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "graphql": "16.11.0",
+    "@tailwindcss/postcss": "^4.1.8",
     "apollo-server-express": "^3.12.1",
+    "cors": "2.8.5",
     "express": "5.1.0",
-    "cors": "2.8.5"
+    "graphql": "16.11.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@types/react": "19.1.6",

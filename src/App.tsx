@@ -1,5 +1,5 @@
-import BuildStats from "@components/BuildStats";
 import ItemSelector from "@components/ItemSelector";
+import StatsDisplay from "@components/StatsDisplay";
 import { SelectedItems } from "@types/build";
 import localforage from "localforage";
 import React, { useEffect, useState } from "react";
@@ -309,7 +309,7 @@ const App: React.FC = () => {
               <h2>Stats</h2>
             </div>
             <div className="card-body scrollable-content">
-              <BuildStats selectedItems={selectedItems} />
+              <StatsDisplay selectedItems={selectedItems} />
             </div>
           </div>
         </div>
