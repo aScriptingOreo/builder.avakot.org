@@ -290,7 +290,7 @@ const App: React.FC = () => {
                   >
                     <span className="font-medium capitalize text-shadow">
                       {slot === "sidearm"
-                        ? "Secondary"
+                        ? "Sidearm"
                         : slot.replace(/([A-Z])/g, " $1")}
                       :
                     </span>

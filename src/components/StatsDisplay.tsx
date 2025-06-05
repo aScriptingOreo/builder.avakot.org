@@ -12,6 +12,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   const [itemDisplayNames, setItemDisplayNames] = useState<
     Record<string, string>
   >({});
+  const [showPrimaryWeapon, setShowPrimaryWeapon] = useState(true);
 
   // Debug logging to ensure component updates
   console.log("StatsDisplay: selectedItems changed", selectedItems);
@@ -36,7 +37,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   }, [selectedItems, itemDisplayNames]);
 
   // Use the centralized stats calculation from statCalculator
-  const stats = calculateStats(selectedItems);
+  const stats = calculateStats(selectedItems, showPrimaryWeapon);
 
   // Debug logging to see calculated stats
   console.log("StatsDisplay: calculated stats", stats);
@@ -81,6 +82,13 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
     );
   };
 
+  // Get current weapon for display
+  const getCurrentWeapon = () => {
+    return showPrimaryWeapon ? selectedItems.primary : selectedItems.sidearm;
+  };
+
+  const currentWeapon = getCurrentWeapon();
+
   return (
     <div className="space-y-6">
       {/* Defense Stats - Always show */}
@@ -116,9 +124,55 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
         </div>
       </div>
 
-      {/* Weapon Stats - Always show */}
+      {/* Weapon Stats - Always show with toggle */}
       <div className="bg-gray-750 p-4 rounded border border-gray-600">
-        <h3 className="text-lg font-medium mb-3 text-red-300">Combat Stats</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-medium text-red-300">Combat Stats</h3>
+
+          {/* Weapon Toggle Switch */}
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-sm ${
+                showPrimaryWeapon ? "text-white font-medium" : "text-gray-400"
+              }`}
+            >
+              Primary
+            </span>
+            <button
+              onClick={() => setShowPrimaryWeapon(!showPrimaryWeapon)}
+              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+              style={{
+                backgroundColor: showPrimaryWeapon
+                  ? "var(--accent-primary)"
+                  : "var(--accent-subtle)",
+              }}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  showPrimaryWeapon ? "translate-x-1" : "translate-x-6"
+                }`}
+              />
+            </button>
+            <span
+              className={`text-sm ${
+                !showPrimaryWeapon ? "text-white font-medium" : "text-gray-400"
+              }`}
+            >
+              Sidearm
+            </span>
+          </div>
+        </div>
+
+        {/* Current weapon indicator */}
+        {currentWeapon && (
+          <div className="mb-3 text-sm text-gray-300">
+            Showing stats for:{" "}
+            <span className="text-yellow-shiny font-medium">
+              {getItemDisplayName(currentWeapon)}
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="text-sm text-gray-400">Attack Power</div>
@@ -218,7 +272,10 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
           {Object.entries(selectedItems).map(([slot, item]) => (
             <div key={slot} className="flex justify-between">
               <span className="text-gray-400 capitalize">
-                {slot.replace(/([A-Z])/g, " $1").trim()}:
+                {slot === "sidearm"
+                  ? "Sidearm"
+                  : slot.replace(/([A-Z])/g, " $1").trim()}
+                :
               </span>
               <span className="text-white">
                 {item ? getItemDisplayName(item) : "None"}

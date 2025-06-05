@@ -48,7 +48,7 @@ const parseStatValue = (value: string | undefined | null): number => {
 };
 
 // Calculate stats from all selected items
-export const calculateStats = (selectedItems: SelectedItems): ConsolidatedStats => {
+export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: boolean = true): ConsolidatedStats => {
   // Initialize stats with default values
   const stats: ConsolidatedStats = {
     physicalDefence: 0,
@@ -127,16 +127,19 @@ export const calculateStats = (selectedItems: SelectedItems): ConsolidatedStats 
 
     const weaponStats = parseWeaponStats(weapon.Stats);
 
-    // Only add primary weapon stats to avoid double counting
-    if (index === 0) { // First weapon (primary)
-      stats.attackPower += weaponStats.Attack;
-      stats.chargedAttack += weaponStats.ChargedAttack;
-      stats.stagger += weaponStats.Stagger;
+    // Show stats for the selected weapon (Primary or Sidearm)
+    const isPrimaryWeapon = weapon === selectedItems.primary;
+    const isSidearmWeapon = weapon === selectedItems.sidearm;
+
+    if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
+      stats.attackPower = weaponStats.Attack;
+      stats.chargedAttack = weaponStats.ChargedAttack;
+      stats.stagger = weaponStats.Stagger;
     }
 
     console.log(`calculateStats: Processed weapon ${weapon.LinkusAlias}`, weaponStats);
 
-    // Process weapon motes (if any)
+    // Process weapon motes (if any) - always include motes from both weapons for virtue bonuses
     if (weapon.Motes && Array.isArray(weapon.Motes)) {
       weapon.Motes.forEach(mote => {
         if (mote?.Effect) {
