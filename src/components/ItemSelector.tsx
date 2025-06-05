@@ -1,27 +1,17 @@
-import { SelectedItems } from "@types/build";
 import React from "react";
+import { SelectedItems } from "../types/build";
 import EquipmentSlot from "./EquipmentSlot";
-
-interface MoteItem {
-  MoteID: string;
-  DisplayName?: string;
-  Img?: {
-    Icon?: string;
-  };
-  Effect?: string | string[];
-  Slot?: string;
-}
 
 interface ItemSelectorProps {
   selectedItems: SelectedItems;
   onItemSelect: (slot: keyof SelectedItems, item: any) => void;
   onItemRemove: (slot: keyof SelectedItems) => void;
-  onMoteSelect?: (
+  onMoteSelect: (
     slot: keyof SelectedItems,
     moteIndex: number,
-    mote: MoteItem
+    mote: any
   ) => void;
-  onMoteRemove?: (slot: keyof SelectedItems, moteIndex: number) => void;
+  onMoteRemove: (slot: keyof SelectedItems, moteIndex: number) => void;
 }
 
 const ItemSelector: React.FC<ItemSelectorProps> = ({
@@ -31,109 +21,104 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
   onMoteSelect,
   onMoteRemove,
 }) => {
-  // Wrapper functions to prevent event propagation issues
-  const handleItemSelect = (slot: keyof SelectedItems) => (item: any) => {
-    onItemSelect(slot, item);
-  };
-
-  const handleItemRemove = (slot: keyof SelectedItems) => () => {
-    onItemRemove(slot);
-  };
-
-  const handleMoteSelect =
-    (slot: keyof SelectedItems) => (moteIndex: number, mote: MoteItem) => {
-      if (onMoteSelect) {
-        onMoteSelect(slot, moteIndex, mote);
-      }
-    };
-
-  const handleMoteRemove =
-    (slot: keyof SelectedItems) => (moteIndex: number) => {
-      if (onMoteRemove) {
-        onMoteRemove(slot, moteIndex);
-      }
-    };
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* Armor Section */}
       <div>
-        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-spirit">
-          Armor
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="text-lg font-semibold mb-3 text-blue-300">Armor</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Important: Use specific slot types like "helm", not generic "armor" */}
           <EquipmentSlot
-            slotName="helm"
-            slotType="armor"
+            slotType="helm"
             selectedItem={selectedItems.helm}
-            onItemSelect={handleItemSelect("helm")}
-            onItemRemove={handleItemRemove("helm")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("helm", item)}
+            onItemRemove={() => onItemRemove("helm")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("helm", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("helm", moteIndex)}
           />
           <EquipmentSlot
-            slotName="upperbody"
-            slotType="armor"
+            slotType="upperBody"
             selectedItem={selectedItems.upperBody}
-            onItemSelect={handleItemSelect("upperBody")}
-            onItemRemove={handleItemRemove("upperBody")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("upperBody", item)}
+            onItemRemove={() => onItemRemove("upperBody")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("upperBody", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("upperBody", moteIndex)}
           />
           <EquipmentSlot
-            slotName="lowerbody"
-            slotType="armor"
+            slotType="lowerBody"
             selectedItem={selectedItems.lowerBody}
-            onItemSelect={handleItemSelect("lowerBody")}
-            onItemRemove={handleItemRemove("lowerBody")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("lowerBody", item)}
+            onItemRemove={() => onItemRemove("lowerBody")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("lowerBody", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("lowerBody", moteIndex)}
           />
           <EquipmentSlot
-            slotName="totem"
-            slotType="armor"
+            slotType="totem"
             selectedItem={selectedItems.totem}
-            onItemSelect={handleItemSelect("totem")}
-            onItemRemove={handleItemRemove("totem")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("totem", item)}
+            onItemRemove={() => onItemRemove("totem")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("totem", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("totem", moteIndex)}
           />
         </div>
       </div>
 
       {/* Weapons Section */}
       <div>
-        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-courage">
-          Weapons
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="text-lg font-semibold mb-3 text-red-300">Weapons</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Important: Use specific slot types like "primary", not generic "weapon" */}
           <EquipmentSlot
-            slotName="primary"
-            slotType="weapon"
+            slotType="primary"
             selectedItem={selectedItems.primary}
-            onItemSelect={handleItemSelect("primary")}
-            onItemRemove={handleItemRemove("primary")}
-            onMoteSelect={handleMoteSelect("primary")}
-            onMoteRemove={handleMoteRemove("primary")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("primary", item)}
+            onItemRemove={() => onItemRemove("primary")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("primary", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("primary", moteIndex)}
           />
           <EquipmentSlot
-            slotName="secondary"
-            slotType="weapon"
+            slotType="sidearm"
             selectedItem={selectedItems.sidearm}
-            onItemSelect={handleItemSelect("sidearm")}
-            onItemRemove={handleItemRemove("sidearm")}
-            onMoteSelect={handleMoteSelect("sidearm")}
-            onMoteRemove={handleMoteRemove("sidearm")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("sidearm", item)}
+            onItemRemove={() => onItemRemove("sidearm")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("sidearm", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("sidearm", moteIndex)}
           />
         </div>
       </div>
 
       {/* Pact Section */}
       <div>
-        <h3 className="equipment-slot-header mb-3 text-lg font-semibold text-shadow-heavy text-grace">
-          Pact
-        </h3>
-        <div className="grid grid-cols-1">
+        <h2 className="text-lg font-semibold mb-3 text-purple-300">Pact</h2>
+        <div className="grid grid-cols-1 gap-4">
           <EquipmentSlot
-            slotName="pact"
             slotType="pact"
             selectedItem={selectedItems.pact}
-            onItemSelect={handleItemSelect("pact")}
-            onItemRemove={handleItemRemove("pact")}
-            onMoteSelect={handleMoteSelect("pact")}
-            onMoteRemove={handleMoteRemove("pact")}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("pact", item)}
+            onItemRemove={() => onItemRemove("pact")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("pact", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("pact", moteIndex)}
           />
         </div>
       </div>

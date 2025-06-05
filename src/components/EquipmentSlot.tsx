@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { SelectedItems } from "../types/build";
 import Modal from "./Modal";
 import MoteSelector from "./MoteSelector";
 
@@ -28,19 +29,19 @@ interface EquipmentItem {
 }
 
 interface EquipmentSlotProps {
-  slotName: string;
-  slotType: "armor" | "weapon" | "pact";
-  selectedItem: EquipmentItem | null;
-  onItemSelect: (item: EquipmentItem) => void;
+  slotType: keyof SelectedItems;
+  selectedItem: any;
+  selectedItems: SelectedItems; // Add this prop
+  onItemSelect: (item: any) => void;
   onItemRemove: () => void;
-  onMoteSelect?: (moteIndex: number, mote: MoteItem) => void;
-  onMoteRemove?: (moteIndex: number) => void;
+  onMoteSelect: (moteIndex: number, mote: any) => void;
+  onMoteRemove: (moteIndex: number) => void;
 }
 
 const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
-  slotName,
   slotType,
   selectedItem,
+  selectedItems, // Add this parameter
   onItemSelect,
   onItemRemove,
   onMoteSelect,
@@ -51,53 +52,13 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
   const [showMoteSelector, setShowMoteSelector] = useState(false);
   const [activeMoteIndex, setActiveMoteIndex] = useState<number | null>(null);
   const [items, setItems] = useState<EquipmentItem[]>([]);
-
-  // Map slot names to GraphQL queries - Use armorsBySlot and weaponsBySlot for filtering
-  const getGraphQLQuery = (slotName: string, slotType: string) => {
-    switch (slotType) {
-      case "armor":
-        // Use armorsBySlot query with proper slot names
-        const armorSlotMap: { [key: string]: string } = {
-          helm: "Helm",
-          upperbody: "UpperBody",
-          lowerbody: "LowerBody",
-          totem: "Totem",
-        };
-        const slotFilter = armorSlotMap[slotName];
-        if (!slotFilter) return "";
-        return `{ armorsBySlot(slot: "${slotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
-
-      case "weapon":
-        // Use weaponsBySlot query with proper slot names
-        const weaponSlotMap: { [key: string]: string } = {
-          primary: "Primary",
-          secondary: "Sidearm",
-        };
-        const weaponSlotFilter = weaponSlotMap[slotName];
-        if (!weaponSlotFilter) return "";
-        return `{ weaponsBySlot(slot: "${weaponSlotFilter}") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity Stats { Smite lvl0 { Stagger Attack ChargedAttack DamageAttuneCap } lvl30 { Stagger Attack ChargedAttack DamageAttuneCap } VirtueAttuneCap } } }`;
-
-      case "pact":
-        return `{ pacts { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Stats { BonusHP BonusVirtue { Type Value } UnarmedDmg MagickDefence PhysicalDefence StabilityIncrease } } }`;
-
-      default:
-        return "";
-    }
-  };
-
-  // Get display name for slots
-  const getSlotDisplayName = (slotName: string) => {
-    const displayNames = {
-      helm: "Helm",
-      upperbody: "Upper Body",
-      lowerbody: "Lower Body",
-      totem: "Totem",
-      primary: "Primary Weapon",
-      secondary: "Secondary Weapon",
-      pact: "Pact",
-    };
-    return displayNames[slotName as keyof typeof displayNames] || slotName;
-  };
+  const [moteSelector, setMoteSelector] = useState<{
+    isOpen: boolean;
+    slotIndex: number | null;
+  }>({
+    isOpen: false,
+    slotIndex: null,
+  });
 
   const handleSlotClick = async (e?: React.MouseEvent) => {
     // Prevent event propagation that might cause conflicts
@@ -111,13 +72,13 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     setIsLoading(true);
 
     try {
-      const query = getGraphQLQuery(slotName, slotType);
+      const query = getGraphQLQuery(slotType);
       if (!query) {
-        throw new Error(`No query defined for slot: ${slotName}`);
+        throw new Error(`No query defined for slot: ${slotType}`);
       }
 
       console.log(
-        `EquipmentSlot: Fetching ${slotName} items with query:`,
+        `EquipmentSlot: Fetching ${slotType} items with query:`,
         query
       );
 
@@ -131,14 +92,14 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       });
 
       console.log(
-        `EquipmentSlot: Response status for ${slotName}:`,
+        `EquipmentSlot: Response status for ${slotType}:`,
         response.status
       );
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error(
-          `EquipmentSlot: HTTP error for ${slotName}:`,
+          `EquipmentSlot: HTTP error for ${slotType}:`,
           response.status,
           errorText
         );
@@ -149,7 +110,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
 
       const result = await response.json();
 
-      console.log(`EquipmentSlot: GraphQL response for ${slotName}:`, result);
+      console.log(`EquipmentSlot: GraphQL response for ${slotType}:`, result);
 
       if (result.errors) {
         console.error("EquipmentSlot: GraphQL errors:", result.errors);
@@ -164,7 +125,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         const fetchedItems = result.data[dataKey] || [];
 
         console.log(
-          `EquipmentSlot: Found ${fetchedItems.length} items for ${slotName}:`,
+          `EquipmentSlot: Found ${fetchedItems.length} items for ${slotType}:`,
           fetchedItems
         );
 
@@ -172,14 +133,65 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         setShowModal(true);
       }
     } catch (error) {
-      console.error(`EquipmentSlot: Error fetching ${slotName} items:`, error);
+      console.error(`EquipmentSlot: Error fetching ${slotType} items:`, error);
       alert(
         `Failed to load ${getSlotDisplayName(
-          slotName
+          slotType
         )} items. Please make sure the GraphQL server is running on port 5501.`
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Map slot names to GraphQL queries - Use armorsBySlot and weaponsBySlot for filtering
+  const getGraphQLQuery = (slotType: keyof SelectedItems): string => {
+    switch (slotType) {
+      case "helm":
+        return `{ armorsBySlot(slot: "Helm") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
+
+      case "upperBody":
+        return `{ armorsBySlot(slot: "UpperBody") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
+
+      case "lowerBody":
+        return `{ armorsBySlot(slot: "LowerBody") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
+
+      case "totem":
+        return `{ armorsBySlot(slot: "Totem") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Set Stats { MagickDefence PhysicalDefence StabilityIncrease Virtue { Type Value } } } }`;
+
+      case "primary":
+        return `{ weaponsBySlot(slot: "Primary") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity Stats { Smite lvl0 { Stagger Attack ChargedAttack DamageAttuneCap } lvl30 { Stagger Attack ChargedAttack DamageAttuneCap } VirtueAttuneCap } } }`;
+
+      case "sidearm":
+        return `{ weaponsBySlot(slot: "Sidearm") { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Slot Art Rarity Stats { Smite lvl0 { Stagger Attack ChargedAttack DamageAttuneCap } lvl30 { Stagger Attack ChargedAttack DamageAttuneCap } VirtueAttuneCap } } }`;
+
+      case "pact":
+        return `{ pacts { LinkusAlias DisplayName LinkusMap Img { Preview Icon } Stats { BonusHP BonusVirtue { Type Value } UnarmedDmg MagickDefence PhysicalDefence StabilityIncrease } } }`;
+
+      default:
+        return "";
+    }
+  };
+
+  // Get display name for slots
+  const getSlotDisplayName = (slotType: keyof SelectedItems): string => {
+    switch (slotType) {
+      case "helm":
+        return "Helm";
+      case "upperBody": // Fix: was "upperbody"
+        return "Upper Body";
+      case "lowerBody": // Fix: was "lowerbody"
+        return "Lower Body";
+      case "totem":
+        return "Totem";
+      case "primary":
+        return "Primary";
+      case "sidearm":
+        return "Sidearm";
+      case "pact":
+        return "Pact";
+      default:
+        return slotType; // Use slotType instead of slotName
     }
   };
 
@@ -202,12 +214,31 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
   };
 
   // New function to handle mote selection
-  const handleMoteSelect = (mote: MoteItem) => {
-    if (activeMoteIndex !== null && onMoteSelect) {
-      onMoteSelect(activeMoteIndex, mote);
+  const handleMoteSelect = (mote: any) => {
+    if (moteSelector.slotIndex === null) return;
+
+    console.log(
+      `EquipmentSlot: Mote selected for ${slotType} slot ${moteSelector.slotIndex}:`,
+      mote
+    );
+
+    // For weapon slots, check if we're at the 3-mote limit for this specific weapon
+    if ((slotType === "primary" || slotType === "sidearm") && selectedItem) {
+      const currentMotes = selectedItem.Motes || [];
+      const filledSlots = currentMotes.filter((m) => m && m.MoteID).length;
+
+      // If we're trying to add to a new slot and we're already at 3 motes, deny
+      if (moteSelector.slotIndex >= currentMotes.length && filledSlots >= 3) {
+        alert(
+          "This weapon already has 3 motes equipped. Remove a mote first or replace an existing one."
+        );
+        setMoteSelector({ isOpen: false, slotIndex: null });
+        return;
+      }
     }
-    setShowMoteSelector(false);
-    setActiveMoteIndex(null);
+
+    onMoteSelect(moteSelector.slotIndex, mote);
+    setMoteSelector({ isOpen: false, slotIndex: null });
   };
 
   // New function to handle mote removal
@@ -252,7 +283,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="equipment-slot-header">
-            {getSlotDisplayName(slotName)}
+            {getSlotDisplayName(slotType)}
           </h3>
           {selectedItem && (
             <button
@@ -311,7 +342,9 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
             </div>
 
             {/* Mote slots - only for weapons and pacts */}
-            {(slotType === "weapon" || slotType === "pact") && (
+            {(slotType === "primary" ||
+              slotType === "sidearm" ||
+              slotType === "pact") && (
               <div className="mote-slots flex space-x-2 mt-2 justify-center">
                 {[0, 1, 2].map((index) => {
                   const mote = selectedItem.Motes?.[index];
@@ -319,7 +352,10 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                     <div
                       key={`mote-slot-${index}`}
                       className="mote-slot"
-                      onClick={(e) => handleMoteSlotClick(index, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMoteSelector({ isOpen: true, slotIndex: index });
+                      }}
                       style={{
                         width: "2rem",
                         height: "2rem",
@@ -394,14 +430,14 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={`Select ${getSlotDisplayName(slotName)}`}
+        title={`Select ${getSlotDisplayName(slotType)}`}
       >
         {items.length === 0 ? (
           <div
             className="text-center py-8 text-shadow"
             style={{ color: "var(--text-muted)" }}
           >
-            No {getSlotDisplayName(slotName).toLowerCase()} items available.
+            No {getSlotDisplayName(slotType).toLowerCase()} items available.
           </div>
         ) : (
           <div className="item-grid">
@@ -451,13 +487,26 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         )}
       </Modal>
 
-      {/* MoteSelector rendered separately - will appear via React Portal */}
-      {showMoteSelector && (
+      {/* Weapon Mote Selector */}
+      {moteSelector.isOpen &&
+        (slotType === "primary" || slotType === "sidearm") && (
+          <MoteSelector
+            slotType="weapon"
+            isOpen={moteSelector.isOpen}
+            onClose={() => setMoteSelector({ isOpen: false, slotIndex: null })}
+            onMoteSelect={handleMoteSelect}
+            selectedItems={selectedItems}
+          />
+        )}
+
+      {/* Pact Mote Selector */}
+      {moteSelector.isOpen && slotType === "pact" && (
         <MoteSelector
-          slotType={slotType === "weapon" ? "weapon" : "pact"}
-          isOpen={showMoteSelector}
-          onClose={() => setShowMoteSelector(false)}
+          slotType="pact"
+          isOpen={moteSelector.isOpen}
+          onClose={() => setMoteSelector({ isOpen: false, slotIndex: null })}
           onMoteSelect={handleMoteSelect}
+          selectedItems={selectedItems}
         />
       )}
     </>

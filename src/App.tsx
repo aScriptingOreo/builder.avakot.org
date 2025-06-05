@@ -88,10 +88,17 @@ const App: React.FC = () => {
     moteIndex: number,
     mote: MoteItem
   ) => {
-    if (!selectedItems[slot]) return;
+    console.log(
+      `App: handleMoteSelect called - slot: ${slot}, moteIndex: ${moteIndex}, mote:`,
+      mote
+    );
+
+    if (!selectedItems[slot]) {
+      console.log(`App: No item selected in slot ${slot}`);
+      return;
+    }
 
     // Validate that the mote's slot type matches the equipment type
-    // Note that in the API, pact motes have Slot="Pacts" (plural)
     const isWeaponSlot = slot === "primary" || slot === "sidearm";
     const isPactSlot = slot === "pact";
 
@@ -105,9 +112,64 @@ const App: React.FC = () => {
       return;
     }
 
+    // For weapon motes, check if the same mote is already equipped on any weapon
+    if (isWeaponSlot) {
+      const allWeaponMotes: string[] = [];
+
+      // Collect all currently equipped weapon motes
+      [selectedItems.primary, selectedItems.sidearm].forEach((weapon) => {
+        if (weapon?.Motes) {
+          weapon.Motes.forEach((equippedMote) => {
+            if (equippedMote?.MoteID) {
+              allWeaponMotes.push(equippedMote.MoteID);
+            }
+          });
+        }
+      });
+
+      console.log(`App: Currently equipped weapon motes:`, allWeaponMotes);
+
+      // Check if this mote is already equipped (excluding the slot we're updating)
+      const currentWeapon = selectedItems[slot];
+      const currentMoteAtIndex = currentWeapon?.Motes?.[moteIndex];
+      const isReplacingExisting = currentMoteAtIndex?.MoteID === mote.MoteID;
+
+      if (!isReplacingExisting && allWeaponMotes.includes(mote.MoteID)) {
+        alert(
+          `The mote "${mote.MoteID}" is already equipped on another weapon. Each mote can only be equipped once.`
+        );
+        return;
+      }
+
+      // Check if we're adding a new mote and would exceed 3 motes for this weapon
+      const currentWeaponMotes = currentWeapon?.Motes || [];
+      const filledSlots = currentWeaponMotes.filter(
+        (m) => m && m.MoteID
+      ).length;
+      const isNewSlot =
+        moteIndex >= currentWeaponMotes.length ||
+        !currentWeaponMotes[moteIndex];
+
+      if (isNewSlot && filledSlots >= 3) {
+        alert(
+          "This weapon already has 3 motes equipped. Each weapon can have a maximum of 3 motes."
+        );
+        return;
+      }
+    }
+
+    console.log(
+      `App: Updating selectedItems for slot ${slot} with mote at index ${moteIndex}`
+    );
+
     setSelectedItems((prev) => {
+      console.log(`App: Previous selectedItems:`, prev);
+
       const item = prev[slot];
-      if (!item) return prev;
+      if (!item) {
+        console.log(`App: No item found in slot ${slot}`);
+        return prev;
+      }
 
       // Create a copy of the item to update
       const updatedItem = { ...item };
@@ -115,6 +177,7 @@ const App: React.FC = () => {
       // Initialize Motes array if it doesn't exist
       if (!updatedItem.Motes) {
         updatedItem.Motes = [];
+        console.log(`App: Initialized Motes array for ${slot}`);
       }
 
       // Set the mote at the specified index
@@ -122,11 +185,16 @@ const App: React.FC = () => {
       updatedMotes[moteIndex] = mote;
       updatedItem.Motes = updatedMotes;
 
+      console.log(`App: Updated item for ${slot}:`, updatedItem);
+
       // Return updated state
-      return {
+      const newState = {
         ...prev,
         [slot]: updatedItem,
       };
+
+      console.log(`App: New selectedItems state:`, newState);
+      return newState;
     });
   };
 
