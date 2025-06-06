@@ -324,6 +324,37 @@ export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: 
     }
   }
 
+  // Add stats from pact if equipped
+  if (selectedItems.pact?.Stats) {
+    const pactStats = selectedItems.pact.Stats;
+
+    // Add defensive stats from pact
+    if (pactStats.PhysicalDefence) stats.physicalDefence += parseFloat(pactStats.PhysicalDefence) || 0;
+    if (pactStats.MagickDefence) stats.magickDefence += parseFloat(pactStats.MagickDefence) || 0;
+    if (pactStats.StabilityIncrease) stats.stabilityIncrease += parseFloat(pactStats.StabilityIncrease) || 0;
+
+    // Add bonus HP from pact
+    if (pactStats.BonusHP) stats.bonusHP += parseFloat(pactStats.BonusHP) || 0;
+
+    // Add unarmed damage from pact
+    if (pactStats.UnarmedDmg) stats.unarmedDamage += parseFloat(pactStats.UnarmedDmg) || 0;
+
+    // Add virtue bonus from pact
+    if (pactStats.VirtueBonus) {
+      const virtueType = pactStats.VirtueBonus.type;
+      const virtueValue = pactStats.VirtueBonus.value;
+
+      if (virtueType === 'Grace') stats.graceValue += virtueValue;
+      else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
+      else if (virtueType === 'Courage') stats.courageValue += virtueValue;
+      else if (virtueType === 'All Virtues') {
+        stats.graceValue += virtueValue;
+        stats.spiritValue += virtueValue;
+        stats.courageValue += virtueValue;
+      }
+    }
+  }
+
   console.log("calculateStats: Final calculated stats", stats);
 
   return stats;

@@ -75,7 +75,25 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
         </div>
       </div>
 
-      {/* Weapons Section */}
+      {/* Pact Section - Moved up before weapons */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3 text-purple-300">Pact</h2>
+        <div className="grid grid-cols-1 gap-4">
+          <EquipmentSlot
+            slotType="pact"
+            selectedItem={selectedItems.pact}
+            selectedItems={selectedItems}
+            onItemSelect={(item) => onItemSelect("pact", item)}
+            onItemRemove={() => onItemRemove("pact")}
+            onMoteSelect={(moteIndex, mote) =>
+              onMoteSelect("pact", moteIndex, mote)
+            }
+            onMoteRemove={(moteIndex) => onMoteRemove("pact", moteIndex)}
+          />
+        </div>
+      </div>
+
+      {/* Weapons Section - Moved to last */}
       <div>
         <h2 className="text-lg font-semibold mb-3 text-red-300">Weapons</h2>
         <div className="grid grid-cols-2 gap-4">
@@ -101,24 +119,6 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
               onMoteSelect("sidearm", moteIndex, mote)
             }
             onMoteRemove={(moteIndex) => onMoteRemove("sidearm", moteIndex)}
-          />
-        </div>
-      </div>
-
-      {/* Pact Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3 text-purple-300">Pact</h2>
-        <div className="grid grid-cols-1 gap-4">
-          <EquipmentSlot
-            slotType="pact"
-            selectedItem={selectedItems.pact}
-            selectedItems={selectedItems}
-            onItemSelect={(item) => onItemSelect("pact", item)}
-            onItemRemove={() => onItemRemove("pact")}
-            onMoteSelect={(moteIndex, mote) =>
-              onMoteSelect("pact", moteIndex, mote)
-            }
-            onMoteRemove={(moteIndex) => onMoteRemove("pact", moteIndex)}
           />
         </div>
       </div>

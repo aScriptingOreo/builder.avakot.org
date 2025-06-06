@@ -3,10 +3,22 @@ import { SelectedItems } from "../types/build";
 import { resolveDisplayName } from "../utils/api";
 import { calculateStats, formatStatValue } from "../utils/statCalculator";
 import { parseMoteEffects } from "../utils/statsParser";
+import StatIcon from "./StatIcon";
 
 interface StatsDisplayProps {
   selectedItems: SelectedItems;
 }
+
+// Define colors for each armor slot
+const ARMOR_SLOT_COLORS = {
+  helm: "#3b82f6", // Blue
+  upperBody: "#10b981", // Green
+  lowerBody: "#8b5cf6", // Purple
+  totem: "#f59e0b", // Amber/gold
+};
+
+// Add Pact color
+const PACT_COLOR = "#ef4444"; // Red
 
 const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
   const [itemDisplayNames, setItemDisplayNames] = useState<
@@ -41,6 +53,84 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
 
   // Debug logging to see calculated stats
   console.log("StatsDisplay: calculated stats", stats);
+
+  // Helper function to get individual armor and pact contributions with color coding
+  const getDefenseContributions = (statType: 'PhysicalDefence' | 'MagickDefence' | 'StabilityIncrease' | 'BonusHP') => {
+    const contributions = [];
+    
+    // Armor slots to check - exclude totem since it doesn't contribute to armor stats
+    const armorSlots: (keyof SelectedItems)[] = ['helm', 'upperBody', 'lowerBody'];
+    
+    // Check armor pieces for contribution
+    for (const slot of armorSlots) {
+      const item = selectedItems[slot];
+      if (item?.Stats && item.Stats[statType]) {
+        const value = parseFloat(item.Stats[statType]);
+        if (!isNaN(value) && value > 0) {
+          contributions.push({
+            slot,
+            value,
+            color: ARMOR_SLOT_COLORS[slot as keyof typeof ARMOR_SLOT_COLORS]
+          });
+        }
+      }
+    }
+    
+    // Check pact for contribution
+    const pact = selectedItems.pact;
+    if (pact?.Stats) {
+      let pactValue = 0;
+      
+      if (statType === 'BonusHP' && pact.Stats.BonusHP) {
+        pactValue = parseFloat(pact.Stats.BonusHP);
+      } else if (statType !== 'BonusHP' && pact.Stats[statType]) {
+        pactValue = parseFloat(pact.Stats[statType]);
+      }
+      
+      if (!isNaN(pactValue) && pactValue > 0) {
+        contributions.push({
+          slot: 'pact',
+          value: pactValue,
+          color: PACT_COLOR
+        });
+      }
+    }
+    
+    return contributions;
+  };
+
+  // Helper function to get virtue contributions from totems
+  const getVirtueContribution = (virtueType: string) => {
+    // Check totem contribution
+    const totem = selectedItems.totem;
+    if (totem?.Stats?.Virtue && 
+        totem.Stats.Virtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
+      const value = parseFloat(totem.Stats.Virtue.Value);
+      if (!isNaN(value) && value > 0) {
+        return {
+          value,
+          color: ARMOR_SLOT_COLORS.totem,
+          source: "totem"
+        };
+      }
+    }
+    
+    // Check pact contribution
+    const pact = selectedItems.pact;
+    if (pact?.Stats?.BonusVirtue && 
+        pact.Stats.BonusVirtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
+      const value = parseFloat(pact.Stats.BonusVirtue.Value);
+      if (!isNaN(value) && value > 0) {
+        return {
+          value,
+          color: PACT_COLOR,
+          source: "pact"
+        };
+      }
+    }
+    
+    return null;
+  };
 
   // Calculate special mote effects that aren't virtue bonuses
   const getSpecialMoteEffects = () => {
@@ -137,6 +227,17 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
 
   const currentWeapon = getCurrentWeapon();
 
+  // Calculate individual contributions
+  const physicalDefenceContributions = getDefenseContributions('PhysicalDefence');
+  const magickDefenceContributions = getDefenseContributions('MagickDefence');
+  const stabilityContributions = getDefenseContributions('StabilityIncrease');
+  const bonusHPContributions = getDefenseContributions('BonusHP');
+  
+  // Get virtue contributions from totems
+  const graceContribution = getVirtueContribution('grace');
+  const spiritContribution = getVirtueContribution('spirit');
+  const courageContribution = getVirtueContribution('courage');
+
   return (
     <div className="space-y-6">
       {/* Defense Stats - Always show */}
@@ -146,29 +247,144 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-sm text-gray-400">Physical Defence</div>
-            <div className="text-xl font-bold text-orange-400">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <StatIcon 
+                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                value=""
+                alt="Physical Defence"
+                size="small"
+              />
+              Physical Defence
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               {formatStatValue(stats.physicalDefence)}
+              {physicalDefenceContributions.length > 0 && (
+                <span className="ml-2 text-sm font-normal">
+                  {physicalDefenceContributions.map((contrib, idx) => (
+                    <span 
+                      key={`${contrib.slot}-${idx}`}
+                      style={{color: contrib.color}}
+                      className="ml-1"
+                    >
+                      {idx === 0 ? '(' : ''}
+                      +{contrib.value}
+                      {idx === physicalDefenceContributions.length - 1 ? ')' : ', '}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
           </div>
+          
           <div>
-            <div className="text-sm text-gray-400">Magick Defence</div>
-            <div className="text-xl font-bold text-purple-400">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <StatIcon 
+                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                value=""
+                alt="Magick Defence"
+                size="small"
+              />
+              Magick Defence
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               {formatStatValue(stats.magickDefence)}
+              {magickDefenceContributions.length > 0 && (
+                <span className="ml-2 text-sm font-normal">
+                  {magickDefenceContributions.map((contrib, idx) => (
+                    <span 
+                      key={`${contrib.slot}-${idx}`}
+                      style={{color: contrib.color}}
+                      className="ml-1"
+                    >
+                      {idx === 0 ? '(' : ''}
+                      +{contrib.value}
+                      {idx === magickDefenceContributions.length - 1 ? ')' : ', '}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
           </div>
+          
           <div>
-            <div className="text-sm text-gray-400">Stability Increase</div>
-            <div className="text-xl font-bold text-green-400">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <StatIcon 
+                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                value=""
+                alt="Stability Increase"
+                size="small"
+              />
+              Stability Increase
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               {formatStatValue(stats.stabilityIncrease)}
+              {stabilityContributions.length > 0 && (
+                <span className="ml-2 text-sm font-normal">
+                  {stabilityContributions.map((contrib, idx) => (
+                    <span 
+                      key={`${contrib.slot}-${idx}`}
+                      style={{color: contrib.color}}
+                      className="ml-1"
+                    >
+                      {idx === 0 ? '(' : ''}
+                      +{contrib.value}
+                      {idx === stabilityContributions.length - 1 ? ')' : ', '}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
           </div>
+          
           <div>
-            <div className="text-sm text-gray-400">Bonus HP</div>
-            <div className="text-xl font-bold text-red-400">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <img 
+                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                alt="Bonus HP"
+                className="h-5 w-5"
+              />
+              Bonus HP
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               {formatStatValue(stats.bonusHP)}
+              {bonusHPContributions.length > 0 && (
+                <span className="ml-2 text-sm font-normal">
+                  {bonusHPContributions.map((contrib, idx) => (
+                    <span 
+                      key={`${contrib.slot}-${idx}`}
+                      style={{color: contrib.color}}
+                      className="ml-1"
+                    >
+                      {idx === 0 ? '(' : ''}
+                      +{contrib.value}
+                      {idx === bonusHPContributions.length - 1 ? ')' : ', '}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
           </div>
+          
+          {/* Add Unarmed Damage */}
+          {stats.unarmedDamage > 0 && (
+            <div>
+              <div className="text-sm text-gray-400 flex items-center gap-2">
+                <img 
+                  src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Runes/Ode/OdeSpirit003.png"
+                  alt="Unarmed Damage"
+                  className="h-5 w-5 filter-yellow-tint"
+                />
+                Unarmed Damage
+              </div>
+              <div className="text-xl font-bold text-white flex items-center">
+                {formatStatValue(stats.unarmedDamage)}
+                {/* Show that this comes from the pact */}
+                <span className="ml-2 text-sm font-normal" style={{color: PACT_COLOR}}>
+                  (Pact)
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -237,35 +453,29 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <div className="text-sm text-gray-400">Attack Power</div>
-            <div className="text-xl font-bold text-red-400">
+            <div className="text-xl font-bold text-white">
               {formatStatValue(stats.attackPower)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Charged Attack</div>
-            <div className="text-xl font-bold text-yellow-400">
+            <div className="text-xl font-bold text-white">
               {formatStatValue(stats.chargedAttack)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Stagger</div>
-            <div className="text-xl font-bold text-orange-400">
+            <div className="text-xl font-bold text-white">
               {formatStatValue(stats.stagger)}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-400">Smite</div>
-            <div className="text-xl font-bold text-purple-400">
-              {/* Debug log what we're trying to display */}
-              {console.log(
-                "StatsDisplay: smiteDisplay value:",
-                stats.smiteDisplay
-              )}
-              {/* Only replace "/" with " in " if it exists */}
+            <div className="text-xl font-bold text-white">
               {stats.smiteDisplay && stats.smiteDisplay.includes("/")
                 ? stats.smiteDisplay.replace("/", " in ") + " hits"
                 : stats.smiteDisplay + " hits"}{" "}
-              <span className="text-sm text-purple-200">
+              <span className="text-sm text-gray-300">
                 ({stats.smitePercentage} chance)
               </span>
             </div>
@@ -307,21 +517,57 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <div className="text-sm text-gray-400">Grace</div>
-            <div className="text-xl font-bold text-grace">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <img 
+                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/GraceSunIcon.png"
+                alt="Grace"
+                className="h-5 w-5"
+              />
+              Grace
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               +{formatStatValue(stats.graceValue)}
+              {graceContribution && (
+                <span className="ml-2 text-sm font-normal" style={{color: graceContribution.color}}>
+                  +{graceContribution.value}
+                </span>
+              )}
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-400">Spirit</div>
-            <div className="text-xl font-bold text-spirit">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <img 
+                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/SpiritMoonIcon.png"
+                alt="Spirit"
+                className="h-5 w-5"
+              />
+              Spirit
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               +{formatStatValue(stats.spiritValue)}
+              {spiritContribution && (
+                <span className="ml-2 text-sm font-normal" style={{color: spiritContribution.color}}>
+                  +{spiritContribution.value}
+                </span>
+              )}
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-400">Courage</div>
-            <div className="text-xl font-bold text-courage">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <img 
+                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/CourageSunIcon.png"
+                alt="Courage"
+                className="h-5 w-5"
+              />
+              Courage
+            </div>
+            <div className="text-xl font-bold text-white flex items-center">
               +{formatStatValue(stats.courageValue)}
+              {courageContribution && (
+                <span className="ml-2 text-sm font-normal" style={{color: courageContribution.color}}>
+                  +{courageContribution.value}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -372,21 +618,26 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
           </div>
         </div>
 
-        {/* Equipped Items List */}
+        {/* Equipped Items List with Color Coding for Armor */}
         <div className="space-y-2 text-sm border-t border-gray-600 pt-3">
-          {Object.entries(selectedItems).map(([slot, item]) => (
-            <div key={slot} className="flex justify-between">
-              <span className="text-gray-400 capitalize">
-                {slot === "sidearm"
-                  ? "Sidearm"
-                  : slot.replace(/([A-Z])/g, " $1").trim()}
-                :
-              </span>
-              <span className="text-white">
-                {item ? getItemDisplayName(item) : "None"}
-              </span>
-            </div>
-          ))}
+          {Object.entries(selectedItems).map(([slot, item]) => {
+            const isArmorSlot = ['helm', 'upperBody', 'lowerBody', 'totem'].includes(slot);
+            const slotColor = isArmorSlot ? ARMOR_SLOT_COLORS[slot as keyof typeof ARMOR_SLOT_COLORS] : undefined;
+            
+            return (
+              <div key={slot} className="flex justify-between">
+                <span className="text-gray-400 capitalize" style={slotColor ? {color: slotColor} : undefined}>
+                  {slot === "sidearm"
+                    ? "Sidearm"
+                    : slot.replace(/([A-Z])/g, " $1").trim()}
+                  :
+                </span>
+                <span className="text-white">
+                  {item ? getItemDisplayName(item) : "None"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

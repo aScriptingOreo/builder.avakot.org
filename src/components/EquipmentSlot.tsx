@@ -2,6 +2,18 @@ import React, { useState } from "react";
 import { SelectedItems } from "../types/build";
 import Modal from "./Modal";
 import MoteSelector from "./MoteSelector";
+import StatIcon from "./StatIcon";
+
+// Define colors for each armor slot to match StatsDisplay
+const ARMOR_SLOT_COLORS = {
+  helm: "#3b82f6", // Blue
+  upperBody: "#10b981", // Green
+  lowerBody: "#8b5cf6", // Purple
+  totem: "#f59e0b", // Amber/gold
+};
+
+// Add color for pact
+const PACT_COLOR = "#ef4444"; // Red - same as in StatsDisplay
 
 interface MoteItem {
   MoteID: string;
@@ -296,6 +308,46 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     return mote.Effect.join(", ");
   };
 
+  // Helper function to check if slot is armor type (excluding totem)
+  const isArmorSlot = (slot: keyof SelectedItems): boolean => {
+    return ["helm", "upperBody", "lowerBody"].includes(slot);
+  };
+
+  // Helper function to check if slot is totem
+  const isTotemSlot = (slot: keyof SelectedItems): boolean => {
+    return slot === "totem";
+  };
+
+  // Helper function to check if slot is pact
+  const isPactSlot = (slot: keyof SelectedItems): boolean => {
+    return slot === "pact";
+  };
+
+  // Helper function to get virtue color based on type (updated for better courage contrast)
+  const getVirtueColor = (type: string): string => {
+    switch (type?.toLowerCase()) {
+      case "grace":
+        return "var(--grace-color)";
+      case "spirit":
+        return "var(--spirit-color)";
+      case "courage":
+        return "var(--courage-color)";
+      default:
+        return "var(--yellow-shiny)";
+    }
+  };
+
+  // Helper function to get color for the current slot
+  const getSlotColor = (slot: keyof SelectedItems): string | undefined => {
+    if (["helm", "upperBody", "lowerBody", "totem"].includes(slot)) {
+      return ARMOR_SLOT_COLORS[slot as keyof typeof ARMOR_SLOT_COLORS];
+    }
+    if (slot === "pact") {
+      return PACT_COLOR;
+    }
+    return undefined;
+  };
+
   return (
     <>
       <div
@@ -311,7 +363,12 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         onClick={handleSlotClick}
       >
         <div className="flex items-center justify-between mb-2">
-          <h3 className="equipment-slot-header">
+          <h3
+            className="equipment-slot-header"
+            style={{
+              color: getSlotColor(slotType) || "var(--text-secondary)", // Now includes pact color
+            }}
+          >
             {getSlotDisplayName(slotType)}
           </h3>
           {selectedItem && (
@@ -354,7 +411,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                   style={{
                     fontSize: "1rem",
                     marginBottom: "0.25rem",
-                    color: "var(--yellow-shiny)",
+                    color: getSlotColor(slotType) || "var(--yellow-shiny)", // Now includes pact color
                   }}
                 >
                   {selectedItem.DisplayName || selectedItem.LinkusAlias}
@@ -369,6 +426,133 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Armor Stats Display - only for helm, upper body, lower body */}
+            {isArmorSlot(slotType) && selectedItem?.Stats && (
+              <div className="armor-stats-container">
+                <StatIcon
+                  iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                  value={selectedItem.Stats.PhysicalDefence}
+                  alt="Physical Defence"
+                  size="small"
+                />
+                <StatIcon
+                  iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                  value={selectedItem.Stats.MagickDefence}
+                  alt="Magick Defence"
+                  size="small"
+                />
+                <StatIcon
+                  iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                  value={selectedItem.Stats.StabilityIncrease}
+                  alt="Stability Increase"
+                  size="small"
+                />
+              </div>
+            )}
+
+            {/* Totem Virtue Display - only for totems */}
+            {isTotemSlot(slotType) && selectedItem?.Stats?.Virtue && (
+              <div className="armor-stats-container">
+                <div 
+                  className="virtue-badge flex items-center justify-center"
+                  style={{
+                    backgroundColor: `${getVirtueColor(selectedItem.Stats.Virtue.Type)}20`,
+                    borderColor: getVirtueColor(selectedItem.Stats.Virtue.Type),
+                    color: getVirtueColor(selectedItem.Stats.Virtue.Type),
+                    padding: "0.25rem 0.75rem",
+                    borderRadius: "4px",
+                    border: `1px solid`,
+                    fontWeight: "500",
+                    textAlign: "center",
+                    width: "100%"
+                  }}
+                >
+                  <img 
+                    src={`https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/${
+                      selectedItem.Stats.Virtue.Type === 'Grace' ? 'GraceSunIcon' :
+                      selectedItem.Stats.Virtue.Type === 'Spirit' ? 'SpiritMoonIcon' : 'CourageSunIcon'
+                    }.png`}
+                    alt={selectedItem.Stats.Virtue.Type}
+                    className="h-4 w-4 mr-1.5"
+                  />
+                  {selectedItem.Stats.Virtue.Type}: +{selectedItem.Stats.Virtue.Value}
+                </div>
+              </div>
+            )}
+
+            {/* Pact Stats Display - only for pacts */}
+            {isPactSlot(slotType) && selectedItem?.Stats && (
+              <div className="armor-stats-container">
+                {selectedItem.Stats.PhysicalDefence && (
+                  <StatIcon
+                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                    value={selectedItem.Stats.PhysicalDefence}
+                    alt="Physical Defence"
+                    size="small"
+                  />
+                )}
+                {selectedItem.Stats.MagickDefence && (
+                  <StatIcon
+                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                    value={selectedItem.Stats.MagickDefence}
+                    alt="Magick Defence"
+                    size="small"
+                  />
+                )}
+                {selectedItem.Stats.StabilityIncrease && (
+                  <StatIcon
+                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                    value={selectedItem.Stats.StabilityIncrease}
+                    alt="Stability Increase"
+                    size="small"
+                  />
+                )}
+                {selectedItem.Stats.BonusHP && (
+                  <StatIcon
+                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                    value={selectedItem.Stats.BonusHP}
+                    alt="Bonus HP"
+                    size="small"
+                  />
+                )}
+                {selectedItem.Stats.UnarmedDmg && (
+                  <StatIcon
+                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                    value={selectedItem.Stats.UnarmedDmg}
+                    alt="Unarmed Damage"
+                    size="small"
+                  />
+                )}
+                {/* Display Bonus Virtue if available */}
+                {selectedItem.Stats.BonusVirtue && (
+                  <div 
+                    className="virtue-badge flex items-center justify-center"
+                    style={{
+                      backgroundColor: `${getVirtueColor(selectedItem.Stats.BonusVirtue.Type)}20`,
+                      borderColor: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
+                      color: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "4px",
+                      border: `1px solid`,
+                      fontWeight: "500",
+                      textAlign: "center",
+                      width: "100%"
+                    }}
+                  >
+                    <img 
+                      src={`https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/${
+                        selectedItem.Stats.BonusVirtue.Type === 'Grace' ? 'GraceSunIcon' :
+                        selectedItem.Stats.BonusVirtue.Type === 'Spirit' ? 'SpiritMoonIcon' : 'CourageSunIcon'
+                      }.png`}
+                      alt={selectedItem.Stats.BonusVirtue.Type}
+                      className="h-4 w-4 mr-1.5"
+                    />
+                    {selectedItem.Stats.BonusVirtue.Type}: +{selectedItem.Stats.BonusVirtue.Value}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Mote slots - only for weapons and pacts */}
             {(slotType === "primary" ||
@@ -495,18 +679,138 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                     )}
                   </div>
 
-                  {/* Item Name */}
+                  {/* Item Name - Apply slot color including pact */}
                   <div
                     className="item-name"
-                    style={{ color: "var(--text-primary)" }}
+                    style={{
+                      color: getSlotColor(slotType) || "var(--text-primary)",
+                      fontWeight: "600",
+                    }}
                   >
                     {displayName}
                   </div>
 
                   {/* Item Info */}
                   {(item.Set || item.Art || item.Rarity) && (
-                    <div className="item-slot">
+                    <div
+                      className="item-slot"
+                      style={{
+                        color: "var(--text-muted)",
+                        fontSize: "0.85rem",
+                      }}
+                    >
                       {item.Set || item.Art || item.Rarity}
+                    </div>
+                  )}
+
+                  {/* Add armor stats in item modal - only for helm, upper body, lower body */}
+                  {isArmorSlot(slotType) && item.Stats && (
+                    <div className="armor-stats-container">
+                      <StatIcon
+                        iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                        value={item.Stats.PhysicalDefence}
+                        alt="Physical Defence"
+                        size="small"
+                      />
+                      <StatIcon
+                        iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                        value={item.Stats.MagickDefence}
+                        alt="Magick Defence"
+                        size="small"
+                      />
+                      <StatIcon
+                        iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                        value={item.Stats.StabilityIncrease}
+                        alt="Stability Increase"
+                        size="small"
+                      />
+                    </div>
+                  )}
+
+                  {/* Add totem virtue in item modal - only for totems */}
+                  {isTotemSlot(slotType) && item.Stats?.Virtue && (
+                    <div className="armor-stats-container">
+                      <div
+                        className="virtue-badge"
+                        style={{
+                          backgroundColor: `${getVirtueColor(item.Stats.Virtue.Type)}20`,
+                          borderColor: getVirtueColor(item.Stats.Virtue.Type),
+                          color: getVirtueColor(item.Stats.Virtue.Type),
+                          padding: "0.25rem 0.75rem",
+                          borderRadius: "4px",
+                          border: `1px solid`,
+                          fontWeight: "500",
+                          textAlign: "center",
+                          width: "100%",
+                        }}
+                      >
+                        {item.Stats.Virtue.Type}: +{item.Stats.Virtue.Value}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add pact stats in item modal - only for pacts */}
+                  {isPactSlot(slotType) && item.Stats && (
+                    <div className="armor-stats-container flex-wrap">
+                      {item.Stats.PhysicalDefence && (
+                        <StatIcon
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                          value={item.Stats.PhysicalDefence}
+                          alt="Physical Defence"
+                          size="small"
+                        />
+                      )}
+                      {item.Stats.MagickDefence && (
+                        <StatIcon
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                          value={item.Stats.MagickDefence}
+                          alt="Magick Defence"
+                          size="small"
+                        />
+                      )}
+                      {item.Stats.StabilityIncrease && (
+                        <StatIcon
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                          value={item.Stats.StabilityIncrease}
+                          alt="Stability Increase"
+                          size="small"
+                        />
+                      )}
+                      {item.Stats.BonusHP && (
+                        <StatIcon
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                          value={item.Stats.BonusHP}
+                          alt="Bonus HP"
+                          size="small"
+                        />
+                      )}
+                      {item.Stats.UnarmedDmg && (
+                        <StatIcon
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                          value={item.Stats.UnarmedDmg}
+                          alt="Unarmed Damage"
+                          size="small"
+                        />
+                      )}
+                      {/* Display Bonus Virtue if available */}
+                      {item.Stats.BonusVirtue && (
+                        <div
+                          className="virtue-badge"
+                          style={{
+                            backgroundColor: `${getVirtueColor(item.Stats.BonusVirtue.Type)}20`,
+                            borderColor: getVirtueColor(item.Stats.BonusVirtue.Type),
+                            color: getVirtueColor(item.Stats.BonusVirtue.Type),
+                            padding: "0.25rem 0.75rem",
+                            borderRadius: "4px",
+                            border: `1px solid`,
+                            fontWeight: "500",
+                            textAlign: "center",
+                            width: "100%"
+                          }}
+                        >
+                          {item.Stats.BonusVirtue.Type}: +{item.Stats.BonusVirtue.Value}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
