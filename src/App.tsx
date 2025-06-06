@@ -39,41 +39,47 @@ const App: React.FC = () => {
     spirit: 0,
     courage: 0,
   });
+  const [masteryRank, setMasteryRank] = useState(0);
 
-  // Load saved build from localStorage on component mount
+  // Load saved build from localforage on mount
   useEffect(() => {
     const loadSavedBuild = async () => {
       try {
-        const savedBuild = await localforage.getItem<SelectedItems>(
-          "soulframe-build"
-        );
-        if (savedBuild) {
-          setSelectedItems(savedBuild);
+        const saved = await localforage.getItem<any>("soulframe-build-v2");
+        if (saved && saved.selectedItems && saved.playerVirtues && typeof saved.masteryRank === "number") {
+          setSelectedItems(saved.selectedItems);
+          setPlayerVirtues(saved.playerVirtues);
+          setMasteryRank(saved.masteryRank);
+        } else if (saved) {
+          // Fallback for old format
+          setSelectedItems(saved);
         }
       } catch (error) {
-        console.error("Error loading saved build:", error);
+        console.error("Error loading build:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadSavedBuild();
   }, []);
 
-  // Save build to localStorage whenever selectedItems changes
+  // Save build to localforage whenever relevant state changes
   useEffect(() => {
     if (!isLoading) {
       const saveBuild = async () => {
         try {
-          await localforage.setItem("soulframe-build", selectedItems);
+          await localforage.setItem("soulframe-build-v2", {
+            selectedItems,
+            playerVirtues,
+            masteryRank,
+          });
         } catch (error) {
           console.error("Error saving build:", error);
         }
       };
-
       saveBuild();
     }
-  }, [selectedItems, isLoading]);
+  }, [selectedItems, playerVirtues, masteryRank, isLoading]);
 
   const handleItemSelect = (slot: keyof SelectedItems, item: any) => {
     console.log(`App: Selecting item for ${slot}:`, item);
@@ -240,10 +246,19 @@ const App: React.FC = () => {
   };
 
   // Add handler for virtue point changes
-  const handleVirtuePointsChange = (
-    virtues: { grace: number; spirit: number; courage: number }
-  ) => {
+  const handleVirtuePointsChange = (virtues: { grace: number; spirit: number; courage: number }) => {
     setPlayerVirtues(virtues);
+  };
+  // Add handler for mastery rank change
+  const handleMasteryRankChange = (rank: number) => {
+    setMasteryRank(rank);
+  };
+
+  // Build import/export integration
+  const handleImportFullBuild = ({ selectedItems, playerStats }: { selectedItems: SelectedItems, playerStats: { masteryRank: number, virtuePoints: { grace: number, spirit: number, courage: number } } }) => {
+    setSelectedItems(selectedItems);
+    setMasteryRank(playerStats.masteryRank);
+    setPlayerVirtues(playerStats.virtuePoints);
   };
 
   if (isLoading) {
@@ -290,42 +305,9 @@ const App: React.FC = () => {
           {/* Build Share Tools - Added to the right of Ko-Fi button */}
           <BuildShareTools
             selectedItems={selectedItems}
-            onImport={(importedItems) => setSelectedItems(importedItems)}
+            playerStats={{ masteryRank, virtuePoints: playerVirtues }}
+            onImportFullBuild={handleImportFullBuild}
           />
-
-          {/* Ko-Fi button - Fixed width to prevent squishing */}
-          <a
-            href="https://ko-fi.com/ascriptingoreo"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-5 py-2 rounded-md text-white transition-transform hover:scale-105"
-            style={{
-              backgroundColor: "var(--courage-color)",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
-              minWidth: "130px", // Added fixed minimum width
-              justifyContent: "center", // Center content horizontally
-            }}
-          >
-            {/* Ko-Fi cup icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-              <line x1="6" y1="1" x2="6" y2="4"></line>
-              <line x1="10" y1="1" x2="10" y2="4"></line>
-              <line x1="14" y1="1" x2="14" y2="4"></line>
-            </svg>
-            <span className="font-medium whitespace-nowrap">Send Love</span>
-          </a>
         </div>
 
         {/* Decorative Header Image */}
@@ -388,7 +370,12 @@ const App: React.FC = () => {
               <h2>Character</h2>
             </div>
             <div className="card-body scrollable-content">
-              <PlayerStats onVirtuePointsChange={handleVirtuePointsChange} />
+              <PlayerStats
+                masteryRank={masteryRank}
+                virtuePoints={playerVirtues}
+                onVirtuePointsChange={handleVirtuePointsChange}
+                onMasteryRankChange={handleMasteryRankChange}
+              />
             </div>
           </div>
 

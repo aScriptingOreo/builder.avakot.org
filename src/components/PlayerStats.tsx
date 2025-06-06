@@ -1,95 +1,73 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface PlayerStatsProps {
+  masteryRank: number;
+  virtuePoints: { grace: number; spirit: number; courage: number };
   onVirtuePointsChange: (virtues: { grace: number; spirit: number; courage: number }) => void;
+  onMasteryRankChange: (rank: number) => void;
 }
 
-const PlayerStats: React.FC<PlayerStatsProps> = ({ onVirtuePointsChange }) => {
-  const [masteryRank, setMasteryRank] = useState(0);
-  
+const PlayerStats: React.FC<PlayerStatsProps> = ({ masteryRank, virtuePoints, onVirtuePointsChange, onMasteryRankChange }) => {
   // Calculate total available virtue points based on mastery rank
   const totalPoints = 4 + masteryRank;
-  
-  // Track allocated points for each virtue
-  const [virtuePoints, setVirtuePoints] = useState({
-    grace: 0,
-    spirit: 0,
-    courage: 0
-  });
-  
-  // Calculate remaining points
+  // Calculate used and remaining points
   const usedPoints = virtuePoints.grace + virtuePoints.spirit + virtuePoints.courage;
   const remainingPoints = totalPoints - usedPoints;
-  
+
   // Effect to notify parent component of virtue point changes
-  useEffect(() => {
+  React.useEffect(() => {
     onVirtuePointsChange(virtuePoints);
   }, [virtuePoints, onVirtuePointsChange]);
   
   // Handle mastery rank change
   const handleMasteryRankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let newRank = Math.max(0, Math.min(254, parseInt(e.target.value) || 0));
-    
-    setMasteryRank(newRank);
-    
-    // If reducing mastery rank would result in negative remaining points,
-    // auto-adjust the virtue allocations
+    onMasteryRankChange(newRank);
+    // If reducing mastery rank would result in negative remaining points, auto-adjust virtues
     const newTotal = 4 + newRank;
     if (usedPoints > newTotal) {
-      // Simple strategy: reduce highest virtue first
       const sorted = Object.entries(virtuePoints).sort(([,a], [,b]) => b - a);
-      const newPoints = {...virtuePoints};
-      
+      const newPoints = { ...virtuePoints };
       let pointsToRemove = usedPoints - newTotal;
       for (const [virtue, value] of sorted) {
         if (pointsToRemove <= 0) break;
-        
         const virtueKey = virtue as keyof typeof virtuePoints;
         const reduction = Math.min(value, pointsToRemove);
         newPoints[virtueKey] -= reduction;
         pointsToRemove -= reduction;
       }
-      
-      setVirtuePoints(newPoints);
+      onVirtuePointsChange(newPoints);
     }
   };
 
   // Adjust mastery rank using buttons
   const adjustMasteryRank = (amount: number) => {
     let newRank = Math.max(0, Math.min(254, masteryRank + amount));
-    
-    setMasteryRank(newRank);
-    
-    // Handle points adjustment if needed
+    onMasteryRankChange(newRank);
     const newTotal = 4 + newRank;
     if (usedPoints > newTotal && amount < 0) {
-      // Simple strategy: reduce highest virtue first
       const sorted = Object.entries(virtuePoints).sort(([,a], [,b]) => b - a);
-      const newPoints = {...virtuePoints};
-      
+      const newPoints = { ...virtuePoints };
       let pointsToRemove = usedPoints - newTotal;
       for (const [virtue, value] of sorted) {
         if (pointsToRemove <= 0) break;
-        
         const virtueKey = virtue as keyof typeof virtuePoints;
         const reduction = Math.min(value, pointsToRemove);
         newPoints[virtueKey] -= reduction;
         pointsToRemove -= reduction;
       }
-      
-      setVirtuePoints(newPoints);
+      onVirtuePointsChange(newPoints);
     }
   };
-  
+
   // Handle virtue point adjustment
   const adjustVirtue = (virtue: keyof typeof virtuePoints, amount: number) => {
-    if (amount > 0 && remainingPoints <= 0) return; // Can't add if no points left
-    if (amount < 0 && virtuePoints[virtue] <= 0) return; // Can't go below 0
-    
-    setVirtuePoints(prev => ({
-      ...prev,
-      [virtue]: Math.max(0, prev[virtue] + amount)
-    }));
+    if (amount > 0 && remainingPoints <= 0) return;
+    if (amount < 0 && virtuePoints[virtue] <= 0) return;
+    onVirtuePointsChange({
+      ...virtuePoints,
+      [virtue]: Math.max(0, virtuePoints[virtue] + amount)
+    });
   };
   
   // Get color for virtues
@@ -163,9 +141,35 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ onVirtuePointsChange }) => {
                 >
                   -
                 </button>
-                <div className="px-4 py-1 bg-gray-800 border-t border-b border-gray-600 font-medium">
-                  {virtuePoints.grace}
-                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalPoints - (usedPoints - virtuePoints.grace)}
+                  value={virtuePoints.grace}
+                  onChange={e => {
+                    let val = parseInt(e.target.value) || 0;
+                    val = Math.max(0, Math.min(val, totalPoints - (usedPoints - virtuePoints.grace)));
+                    // Clamp so total does not exceed available points
+                    const newVirtues = { ...virtuePoints, grace: val };
+                    const sum = newVirtues.grace + newVirtues.spirit + newVirtues.courage;
+                    if (sum > totalPoints) {
+                      // Reduce other virtues in order: spirit, courage
+                      let overflow = sum - totalPoints;
+                      if (newVirtues.spirit > 0) {
+                        const reduce = Math.min(newVirtues.spirit, overflow);
+                        newVirtues.spirit -= reduce;
+                        overflow -= reduce;
+                      }
+                      if (overflow > 0 && newVirtues.courage > 0) {
+                        const reduce = Math.min(newVirtues.courage, overflow);
+                        newVirtues.courage -= reduce;
+                        overflow -= reduce;
+                      }
+                    }
+                    onVirtuePointsChange(newVirtues);
+                  }}
+                  className="w-12 text-center py-1 border-t border-b border-gray-600 bg-gray-800 text-white"
+                />
                 <button 
                   onClick={() => adjustVirtue('grace', 1)}
                   disabled={remainingPoints <= 0}
@@ -205,9 +209,34 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ onVirtuePointsChange }) => {
                 >
                   -
                 </button>
-                <div className="px-4 py-1 bg-gray-800 border-t border-b border-gray-600 font-medium">
-                  {virtuePoints.spirit}
-                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalPoints - (usedPoints - virtuePoints.spirit)}
+                  value={virtuePoints.spirit}
+                  onChange={e => {
+                    let val = parseInt(e.target.value) || 0;
+                    val = Math.max(0, Math.min(val, totalPoints - (usedPoints - virtuePoints.spirit)));
+                    const newVirtues = { ...virtuePoints, spirit: val };
+                    const sum = newVirtues.grace + newVirtues.spirit + newVirtues.courage;
+                    if (sum > totalPoints) {
+                      // Reduce other virtues in order: grace, courage
+                      let overflow = sum - totalPoints;
+                      if (newVirtues.grace > 0) {
+                        const reduce = Math.min(newVirtues.grace, overflow);
+                        newVirtues.grace -= reduce;
+                        overflow -= reduce;
+                      }
+                      if (overflow > 0 && newVirtues.courage > 0) {
+                        const reduce = Math.min(newVirtues.courage, overflow);
+                        newVirtues.courage -= reduce;
+                        overflow -= reduce;
+                      }
+                    }
+                    onVirtuePointsChange(newVirtues);
+                  }}
+                  className="w-12 text-center py-1 border-t border-b border-gray-600 bg-gray-800 text-white"
+                />
                 <button 
                   onClick={() => adjustVirtue('spirit', 1)}
                   disabled={remainingPoints <= 0}
@@ -247,9 +276,34 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ onVirtuePointsChange }) => {
                 >
                   -
                 </button>
-                <div className="px-4 py-1 bg-gray-800 border-t border-b border-gray-600 font-medium">
-                  {virtuePoints.courage}
-                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalPoints - (usedPoints - virtuePoints.courage)}
+                  value={virtuePoints.courage}
+                  onChange={e => {
+                    let val = parseInt(e.target.value) || 0;
+                    val = Math.max(0, Math.min(val, totalPoints - (usedPoints - virtuePoints.courage)));
+                    const newVirtues = { ...virtuePoints, courage: val };
+                    const sum = newVirtues.grace + newVirtues.spirit + newVirtues.courage;
+                    if (sum > totalPoints) {
+                      // Reduce other virtues in order: grace, spirit
+                      let overflow = sum - totalPoints;
+                      if (newVirtues.grace > 0) {
+                        const reduce = Math.min(newVirtues.grace, overflow);
+                        newVirtues.grace -= reduce;
+                        overflow -= reduce;
+                      }
+                      if (overflow > 0 && newVirtues.spirit > 0) {
+                        const reduce = Math.min(newVirtues.spirit, overflow);
+                        newVirtues.spirit -= reduce;
+                        overflow -= reduce;
+                      }
+                    }
+                    onVirtuePointsChange(newVirtues);
+                  }}
+                  className="w-12 text-center py-1 border-t border-b border-gray-600 bg-gray-800 text-white"
+                />
                 <button 
                   onClick={() => adjustVirtue('courage', 1)}
                   disabled={remainingPoints <= 0}

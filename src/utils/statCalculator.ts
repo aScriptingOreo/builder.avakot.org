@@ -34,6 +34,12 @@ export interface ConsolidatedStats {
   armorPieces: number;
   weaponsEquipped: number;
   hasPact: boolean;
+
+  // Unarmed damage (for pact)
+  unarmedDamage: number;
+
+  // Virtue breakdown for UI
+  virtueBreakdown?: Record<string, Array<{ value: number; source: string }>>;
 }
 
 // Helper to parse numeric values safely
@@ -56,6 +62,17 @@ const parseStatValue = (value: string | undefined | null): number => {
   return isNaN(numValue) ? 0 : numValue;
 };
 
+// Utility to add virtue values to both total and breakdown
+function addVirtueBreakdown(breakdown: any, virtue: string, value: number, source: string) {
+  if (!breakdown[virtue]) breakdown[virtue] = [];
+  breakdown[virtue].push({ value, source });
+}
+
+// Utility to handle AllVirtues
+function addAllVirtuesBreakdown(breakdown: any, value: number, source: string) {
+  ['grace', 'spirit', 'courage'].forEach(v => addVirtueBreakdown(breakdown, v, value, source));
+}
+
 // Calculate stats from all selected items
 export function calculateStats(
   selectedItems: SelectedItems,
@@ -76,17 +93,26 @@ export function calculateStats(
     smitePercentage: "0%",
     damageAttuneCap: 0,
     virtueAttuneCap: 0,
-    damageType: "",       // New field
-    art: "",              // New field
+    damageType: "",
+    art: "",
     graceValue: 0,
     spiritValue: 0,
     courageValue: 0,
     armorPieces: 0,
     weaponsEquipped: 0,
-    hasPact: false
+    hasPact: false,
+    unarmedDamage: 0,
+    virtueBreakdown: undefined
   };
 
   console.log("calculateStats: Processing selectedItems", selectedItems);
+
+  // Add virtue breakdown
+  const virtueBreakdown: Record<string, Array<{ value: number; source: string }>> = {
+    grace: [],
+    spirit: [],
+    courage: []
+  };
 
   // Process armor items (helm, upperBody, lowerBody, totem)
   const armorItems = [
@@ -116,14 +142,20 @@ export function calculateStats(
     if (armorStats.VirtueBonus) {
       const virtueType = armorStats.VirtueBonus.type;
       const virtueValue = armorStats.VirtueBonus.value;
-
-      if (virtueType === 'Grace') stats.graceValue += virtueValue;
-      else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
-      else if (virtueType === 'Courage') stats.courageValue += virtueValue;
-      else if (virtueType === 'All Virtues') {
+      if (virtueType === 'Grace') {
+        stats.graceValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'grace', virtueValue, item.LinkusAlias || 'armor');
+      } else if (virtueType === 'Spirit') {
+        stats.spiritValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'spirit', virtueValue, item.LinkusAlias || 'armor');
+      } else if (virtueType === 'Courage') {
+        stats.courageValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'courage', virtueValue, item.LinkusAlias || 'armor');
+      } else if (virtueType === 'All Virtues') {
         stats.graceValue += virtueValue;
         stats.spiritValue += virtueValue;
         stats.courageValue += virtueValue;
+        addAllVirtuesBreakdown(virtueBreakdown, virtueValue, item.LinkusAlias || 'armor');
       }
     }
 
@@ -140,7 +172,7 @@ export function calculateStats(
   stats.weaponsEquipped = weaponItems.length;
 
   // Process each weapon using statsParser
-  weaponItems.forEach((weapon, index) => {
+  weaponItems.forEach(weapon => {
     if (!weapon) return;
 
     console.log(`calculateStats: Processing weapon ${weapon.LinkusAlias}, has Stats:`, !!weapon.Stats);
@@ -180,7 +212,7 @@ export function calculateStats(
       console.log(`calculateStats: Mote bonuses for ${weapon.LinkusAlias}:`, totalMoteBonus);
 
       // Apply mote bonuses to selected weapon stats
-      if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
+      if ((showPrimaryWeapon && weapon === selectedItems.primary) || (!showPrimaryWeapon && weapon === selectedItems.sidearm)) {
         stats.attackPower = weaponStats.Attack + totalMoteBonus.attackDamage;
         stats.chargedAttack = weaponStats.ChargedAttack + totalMoteBonus.chargedAttackDamage;
 
@@ -236,58 +268,58 @@ export function calculateStats(
         stats.stagger = weaponStats.Stagger;
         stats.damageAttuneCap = weaponStats.DamageAttuneCap;
         stats.virtueAttuneCap = weaponStats.VirtueAttuneCap;
-        stats.damageType = weapon.DamageType || "";
         stats.art = weapon.Art || "";
       }
     } else {
       // No motes, just set base stats
-      if ((showPrimaryWeapon && isPrimaryWeapon) || (!showPrimaryWeapon && isSidearmWeapon)) {
+      if ((showPrimaryWeapon && weapon === selectedItems.primary) || (!showPrimaryWeapon && weapon === selectedItems.sidearm)) {
         stats.attackPower = weaponStats.Attack;
         stats.chargedAttack = weaponStats.ChargedAttack;
         stats.stagger = weaponStats.Stagger;
-        stats.smite = weaponStats.Smite;
-        stats.damageAttuneCap = weaponStats.DamageAttuneCap;
-        stats.virtueAttuneCap = weaponStats.VirtueAttuneCap;
-        stats.damageType = weapon.DamageType || "";
-        stats.art = weapon.Art || "";
-
-        // Log setting smiteDisplay in the "no motes" case
-        console.log(`calculateStats: Setting smiteDisplay (no motes) for ${weapon.LinkusAlias} to: "${weaponStats.Smite}"`);
-
-        // Set smite values without bonus - ensure we're using the raw string
+        // Smite is a string, but stats.smite expects a number, so parse numerator
         const smiteInfo = parseSmiteValue(weaponStats.Smite);
         stats.smite = smiteInfo.numerator;
         stats.smiteDisplay = smiteInfo.display; // This should preserve the X/Y format
         stats.smitePercentage = smiteInfo.formattedPercentage;
-
-        console.log(`calculateStats: Final smiteDisplay (no motes): "${stats.smiteDisplay}"`);
+        stats.damageAttuneCap = weaponStats.DamageAttuneCap;
+        stats.virtueAttuneCap = weaponStats.VirtueAttuneCap;
+        stats.art = weapon.Art || "";
       }
     }
 
     console.log(`calculateStats: Processed weapon ${weapon.LinkusAlias}`, weaponStats);
 
     // Process weapon motes for virtue bonuses - Keep existing code for virtue bonuses
-    if (weapon.Motes && Array.isArray(weapon.Motes)) {
-      weapon.Motes.forEach(mote => {
-        if (mote?.Effect) {
-          const { virtueBonus } = parseMoteEffects(mote.Effect);
-          stats.graceValue += virtueBonus.Grace;
-          stats.spiritValue += virtueBonus.Spirit;
-          stats.courageValue += virtueBonus.Courage;
-
-          console.log(`calculateStats: Processed weapon mote ${mote.MoteID}`, virtueBonus);
-        }
-      });
-    }
+    weaponItems.forEach(weapon => {
+      if (!weapon) return;
+      // Only WeaponItem has Motes
+      const weaponWithMotes = weapon as import('../types/build').WeaponItem;
+      if (weaponWithMotes.Motes && Array.isArray(weaponWithMotes.Motes)) {
+        weaponWithMotes.Motes.forEach((mote: import('../types/build').MoteItem) => {
+          if (mote?.Effect) {
+            const { virtueBonus } = parseMoteEffects(mote.Effect);
+            if (virtueBonus.Grace) {
+              addVirtueBreakdown(virtueBreakdown, 'grace', virtueBonus.Grace, `${weaponWithMotes.LinkusAlias} mote`);
+              stats.graceValue += virtueBonus.Grace;
+            }
+            if (virtueBonus.Spirit) {
+              addVirtueBreakdown(virtueBreakdown, 'spirit', virtueBonus.Spirit, `${weaponWithMotes.LinkusAlias} mote`);
+              stats.spiritValue += virtueBonus.Spirit;
+            }
+            if (virtueBonus.Courage) {
+              addVirtueBreakdown(virtueBreakdown, 'courage', virtueBonus.Courage, `${weaponWithMotes.LinkusAlias} mote`);
+              stats.courageValue += virtueBonus.Courage;
+            }
+          }
+        });
+      }
+    });
   });
 
-  // Process pact and its motes using statsParser
+  // Pact and pact motes
   const pact = selectedItems.pact;
   if (pact) {
     stats.hasPact = true;
-
-    console.log(`calculateStats: Processing pact ${pact.LinkusAlias}, has Stats:`, !!pact.Stats);
-
     const pactStats = parsePactStats(pact.Stats);
 
     // Accumulate pact stats
@@ -296,33 +328,46 @@ export function calculateStats(
     stats.magickDefence += pactStats.MagickDefence;
     stats.stabilityIncrease += pactStats.StabilityIncrease;
 
-    // Handle virtue bonuses from pact
-    if (pactStats.VirtueBonus) {
-      const virtueType = pactStats.VirtueBonus.type;
-      const virtueValue = pactStats.VirtueBonus.value;
+    // Add unarmed damage from pact
+    if (pactStats.UnarmedDmg) stats.unarmedDamage += parseFloat(pactStats.UnarmedDmg as any) || 0;
 
-      if (virtueType === 'Grace') stats.graceValue += virtueValue;
-      else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
-      else if (virtueType === 'Courage') stats.courageValue += virtueValue;
-      else if (virtueType === 'All Virtues') {
+    // Handle virtue bonuses from pact (BonusVirtue)
+    if (pact.Stats?.BonusVirtue) {
+      const virtueType = pact.Stats.BonusVirtue.Type;
+      const virtueValue = parseFloat(pact.Stats.BonusVirtue.Value || '0');
+      if (virtueType === 'Grace') {
+        stats.graceValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'grace', virtueValue, pact.LinkusAlias || 'pact');
+      } else if (virtueType === 'Spirit') {
+        stats.spiritValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'spirit', virtueValue, pact.LinkusAlias || 'pact');
+      } else if (virtueType === 'Courage') {
+        stats.courageValue += virtueValue;
+        addVirtueBreakdown(virtueBreakdown, 'courage', virtueValue, pact.LinkusAlias || 'pact');
+      } else if (virtueType === 'All Virtues') {
         stats.graceValue += virtueValue;
         stats.spiritValue += virtueValue;
         stats.courageValue += virtueValue;
+        addAllVirtuesBreakdown(virtueBreakdown, virtueValue, pact.LinkusAlias || 'pact');
       }
     }
 
-    console.log(`calculateStats: Processed pact ${pact.LinkusAlias}`, pactStats);
-
-    // Process pact motes (if any)
     if (pact.Motes && Array.isArray(pact.Motes)) {
       pact.Motes.forEach(mote => {
         if (mote?.Effect) {
           const { virtueBonus } = parseMoteEffects(mote.Effect);
-          stats.graceValue += virtueBonus.Grace;
-          stats.spiritValue += virtueBonus.Spirit;
-          stats.courageValue += virtueBonus.Courage;
-
-          console.log(`calculateStats: Processed pact mote ${mote.MoteID}`, virtueBonus);
+          if (virtueBonus.Grace) {
+            stats.graceValue += virtueBonus.Grace;
+            addVirtueBreakdown(virtueBreakdown, 'grace', virtueBonus.Grace, `${pact.LinkusAlias} mote`);
+          }
+          if (virtueBonus.Spirit) {
+            stats.spiritValue += virtueBonus.Spirit;
+            addVirtueBreakdown(virtueBreakdown, 'spirit', virtueBonus.Spirit, `${pact.LinkusAlias} mote`);
+          }
+          if (virtueBonus.Courage) {
+            stats.courageValue += virtueBonus.Courage;
+            addVirtueBreakdown(virtueBreakdown, 'courage', virtueBonus.Courage, `${pact.LinkusAlias} mote`);
+          }
         }
       });
     }
@@ -341,22 +386,7 @@ export function calculateStats(
     if (pactStats.BonusHP) stats.bonusHP += parseFloat(pactStats.BonusHP) || 0;
 
     // Add unarmed damage from pact
-    if (pactStats.UnarmedDmg) stats.unarmedDamage += parseFloat(pactStats.UnarmedDmg) || 0;
-
-    // Add virtue bonus from pact
-    if (pactStats.VirtueBonus) {
-      const virtueType = pactStats.VirtueBonus.type;
-      const virtueValue = pactStats.VirtueBonus.value;
-
-      if (virtueType === 'Grace') stats.graceValue += virtueValue;
-      else if (virtueType === 'Spirit') stats.spiritValue += virtueValue;
-      else if (virtueType === 'Courage') stats.courageValue += virtueValue;
-      else if (virtueType === 'All Virtues') {
-        stats.graceValue += virtueValue;
-        stats.spiritValue += virtueValue;
-        stats.courageValue += virtueValue;
-      }
-    }
+    if (pactStats.UnarmedDmg) stats.unarmedDamage += parseFloat(pactStats.UnarmedDmg as any) || 0;
   }
 
   // Modify virtue calculations to include player virtue points
@@ -396,58 +426,13 @@ export function calculateStats(
     }
   }
 
-  // Process weapon motes for virtue bonuses
-  for (const weaponSlot of ['primary', 'sidearm']) {
-    const weapon = selectedItems[weaponSlot as keyof SelectedItems];
-    if (weapon?.Motes) {
-      weapon.Motes.forEach(mote => {
-        if (mote && typeof mote.Effect === 'string') {
-          // Look for virtue bonuses in mote effects
-          const graceMatch = mote.Effect.match(/Grace\s*\+\s*(\d+)/i);
-          if (graceMatch && graceMatch[1]) {
-            graceValue += parseInt(graceMatch[1], 10);
-          }
-
-          const spiritMatch = mote.Effect.match(/Spirit\s*\+\s*(\d+)/i);
-          if (spiritMatch && spiritMatch[1]) {
-            spiritValue += parseInt(spiritMatch[1], 10);
-          }
-
-          const courageMatch = mote.Effect.match(/Courage\s*\+\s*(\d+)/i);
-          if (courageMatch && courageMatch[1]) {
-            courageValue += parseInt(courageMatch[1], 10);
-          }
-        }
-      });
-    }
-  }
-
-  // Process pact motes for virtue bonuses
-  if (pact?.Motes) {
-    pact.Motes.forEach(mote => {
-      if (mote && typeof mote.Effect === 'string') {
-        const graceMatch = mote.Effect.match(/Grace\s*\+\s*(\d+)/i);
-        if (graceMatch && graceMatch[1]) {
-          graceValue += parseInt(graceMatch[1], 10);
-        }
-
-        const spiritMatch = mote.Effect.match(/Spirit\s*\+\s*(\d+)/i);
-        if (spiritMatch && spiritMatch[1]) {
-          spiritValue += parseInt(spiritMatch[1], 10);
-        }
-
-        const courageMatch = mote.Effect.match(/Courage\s*\+\s*(\d+)/i);
-        if (courageMatch && courageMatch[1]) {
-          courageValue += parseInt(courageMatch[1], 10);
-        }
-      }
-    });
-  }
-
   // Assign calculated virtue values to stats
-  stats.graceValue = graceValue;
-  stats.spiritValue = spiritValue;
-  stats.courageValue = courageValue;
+  stats.graceValue = virtueBreakdown.grace.reduce((a, b) => a + b.value, 0);
+  stats.spiritValue = virtueBreakdown.spirit.reduce((a, b) => a + b.value, 0);
+  stats.courageValue = virtueBreakdown.courage.reduce((a, b) => a + b.value, 0);
+
+  // Attach breakdown for UI
+  stats.virtueBreakdown = virtueBreakdown;
 
   console.log("calculateStats: Final calculated stats", stats);
 

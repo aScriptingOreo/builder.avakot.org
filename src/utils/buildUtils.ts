@@ -23,12 +23,29 @@ interface SimplifiedBuild {
   } | null;
 }
 
+interface PlayerStatsExport {
+  masteryRank: number;
+  virtuePoints: {
+    grace: number;
+    spirit: number;
+    courage: number;
+  };
+}
+
+interface FullBuildExport {
+  equipment: SimplifiedBuild;
+  playerStats: PlayerStatsExport;
+}
+
 /**
  * Serializes the build to a simplified format for export
  * @param selectedItems The current build items
  * @returns A simplified representation of the build with just IDs
  */
-export const serializeBuild = (selectedItems: SelectedItems): SimplifiedBuild => {
+export const serializeBuild = (
+  selectedItems: SelectedItems,
+  playerStats: PlayerStatsExport
+): FullBuildExport => {
   const simplified: SimplifiedBuild = {};
 
   // Process each slot
@@ -58,8 +75,10 @@ export const serializeBuild = (selectedItems: SelectedItems): SimplifiedBuild =>
     }
   });
 
-  console.log("Serialized build:", simplified);
-  return simplified;
+  return {
+    equipment: simplified,
+    playerStats
+  };
 };
 
 /**
@@ -67,7 +86,7 @@ export const serializeBuild = (selectedItems: SelectedItems): SimplifiedBuild =>
  * @param build The simplified build object
  * @returns Base64-encoded string representing the build
  */
-export const buildToString = (build: SimplifiedBuild): string => {
+export const buildToString = (build: FullBuildExport): string => {
   try {
     const json = JSON.stringify(build);
     return btoa(encodeURIComponent(json));
@@ -82,12 +101,10 @@ export const buildToString = (build: SimplifiedBuild): string => {
  * @param str The base64-encoded build string
  * @returns The simplified build object or null if parsing fails
  */
-export const parseBuildString = (str: string): SimplifiedBuild | null => {
+export const parseBuildString = (str: string): FullBuildExport | null => {
   try {
     const json = decodeURIComponent(atob(str.trim()));
-    console.log("Decoded build string:", json);
     const parsed = JSON.parse(json);
-    console.log("Parsed build object:", parsed);
     return parsed;
   } catch (error) {
     console.error("Error decoding build string:", error);
@@ -220,10 +237,10 @@ const fetchMote = async (moteId: string): Promise<any | null> => {
  * @returns Promise resolving to a complete build with full item data
  */
 export const restoreBuildFromIdentifiers = async (
-  simplifiedBuild: SimplifiedBuild
-): Promise<SelectedItems> => {
-  console.log("Restoring build from identifiers:", simplifiedBuild);
-
+  build: FullBuildExport
+): Promise<{ selectedItems: SelectedItems; playerStats: PlayerStatsExport }> => {
+  const simplifiedBuild = build.equipment;
+  const playerStats = build.playerStats;
   const restoredBuild: SelectedItems = {
     helm: null,
     upperBody: null,
@@ -320,7 +337,7 @@ export const restoreBuildFromIdentifiers = async (
   }
 
   console.log("Final restored build:", restoredBuild);
-  return restoredBuild;
+  return { selectedItems: restoredBuild, playerStats };
 };
 
 /**

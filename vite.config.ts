@@ -15,7 +15,7 @@ export default defineConfig({
     host: '0.0.0.0', // Allow connections from outside the container
     port: 3000,
     strictPort: true, // Fail if port is in use
-    allowedHosts: ['builder.7thseraph.org'], // Remove the api subdomain
+    allowedHosts: ['builder.avakot.org'], // Remove the api subdomain
     proxy: {
       '/graphql': {
         target: process.env.NODE_ENV === 'production'

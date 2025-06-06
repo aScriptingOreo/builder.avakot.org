@@ -24,7 +24,7 @@ services:
       - "traefik.docker.network=proxy"
       - "traefik.http.services.builderclient.loadbalancer.server.port=3000"
       # Main app route - serves the React app
-      - "traefik.http.routers.builderclient.rule=Host(`builder.7thseraph.org`)" 
+      - "traefik.http.routers.builderclient.rule=Host(`builder.avakot.org`)" 
       - "traefik.http.routers.builderclient.entrypoints=https"
       - "traefik.http.routers.builderclient.tls=true"
       - "traefik.http.routers.builderclient.tls.certresolver=letsencrypt"
@@ -46,7 +46,7 @@ services:
       - PORT=5501
       - HOST=0.0.0.0
       - USE_ROOT_PATH=false
-      - ALLOWED_ORIGIN=http://builder.7thseraph.org
+      - ALLOWED_ORIGIN=http://builder.avakot.org
     networks:
       - proxy
       - default
@@ -55,7 +55,7 @@ services:
       - "traefik.docker.network=proxy"
       - "traefik.http.services.builderserver.loadbalancer.server.port=5501"
       # Use the main domain with a path prefix instead of a subdomain
-      - "traefik.http.routers.builderserver.rule=Host(`builder.7thseraph.org`) && PathPrefix(`/graphql`)"
+      - "traefik.http.routers.builderserver.rule=Host(`builder.avakot.org`) && PathPrefix(`/graphql`)"
       - "traefik.http.routers.builderserver.entrypoints=https"
       - "traefik.http.routers.builderserver.tls=true"
       - "traefik.http.routers.builderserver.tls.certresolver=letsencrypt"

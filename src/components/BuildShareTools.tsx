@@ -1,20 +1,26 @@
+import localforage from "localforage";
 import React, { useState } from "react";
 import { SelectedItems } from "../types/build";
 import {
-  buildToString,
-  parseBuildString,
-  restoreBuildFromIdentifiers,
-  serializeBuild,
+    buildToString,
+    parseBuildString,
+    restoreBuildFromIdentifiers,
+    serializeBuild,
 } from "../utils/buildUtils";
 
 interface BuildShareToolsProps {
   selectedItems: SelectedItems;
-  onImport: (items: SelectedItems) => void;
+  playerStats: {
+    masteryRank: number;
+    virtuePoints: { grace: number; spirit: number; courage: number };
+  };
+  onImportFullBuild: (build: { selectedItems: SelectedItems; playerStats: { masteryRank: number; virtuePoints: { grace: number; spirit: number; courage: number } } }) => void;
 }
 
 const BuildShareTools: React.FC<BuildShareToolsProps> = ({
   selectedItems,
-  onImport,
+  playerStats,
+  onImportFullBuild,
 }) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importCode, setImportCode] = useState("");
@@ -25,18 +31,12 @@ const BuildShareTools: React.FC<BuildShareToolsProps> = ({
   // Export build to clipboard
   const exportBuild = () => {
     try {
-      // Convert the build to a simplified format with just identifiers
-      const simplifiedBuild = serializeBuild(selectedItems);
-
-      // Convert to base64 string
-      const hash = buildToString(simplifiedBuild);
-
-      // Copy to clipboard
+      const fullBuild = serializeBuild(selectedItems, playerStats);
+      const hash = buildToString(fullBuild);
       navigator.clipboard.writeText(hash).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
-
       return hash;
     } catch (error) {
       console.error("Error exporting build:", error);
@@ -46,28 +46,15 @@ const BuildShareTools: React.FC<BuildShareToolsProps> = ({
 
   // Import a build from a hash
   const importBuild = async (hash: string) => {
+    setIsImporting(true);
+    setImportError("");
     try {
-      setIsImporting(true);
-      setImportError("");
-
-      // Parse the hash to a simplified build object
-      const simplifiedBuild = parseBuildString(hash.trim());
-
-      if (!simplifiedBuild) {
+      const fullBuild = parseBuildString(hash.trim());
+      if (!fullBuild || !fullBuild.equipment || !fullBuild.playerStats) {
         throw new Error("Invalid build data format");
       }
-
-      console.log("Simplified build parsed:", simplifiedBuild);
-
-      // Restore the full build with GraphQL queries
-      const restoredBuild = await restoreBuildFromIdentifiers(simplifiedBuild);
-
-      console.log("Restored build:", restoredBuild);
-
-      // Update the app state with the restored build
-      onImport(restoredBuild);
-
-      // Close the modal and reset state
+      const restored = await restoreBuildFromIdentifiers(fullBuild);
+      onImportFullBuild(restored);
       setShowImportModal(false);
       setImportCode("");
     } catch (error) {
@@ -80,16 +67,25 @@ const BuildShareTools: React.FC<BuildShareToolsProps> = ({
     }
   };
 
+  // Clear all localforage data and reload
+  const clearAllData = async () => {
+    if (window.confirm("Are you sure you want to clear all saved Soulframe builder data? This cannot be undone.")) {
+      await localforage.clear();
+      window.location.reload();
+    }
+  };
+
   return (
     <>
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 items-center">
         <button
           onClick={() => exportBuild()}
-          className="px-3 py-1 text-sm rounded transition-all hover:bg-opacity-80 flex items-center gap-1"
+          className="px-3 py-1 text-sm rounded flex items-center gap-1 shadow-md transition-all duration-100 hover:scale-105 hover:bg-opacity-90 active:scale-95 active:brightness-90"
           style={{
             backgroundColor: "var(--spirit-color)",
             color: "white",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+            minWidth: 90,
+            whiteSpace: "nowrap"
           }}
           title="Export build to clipboard"
         >
@@ -114,11 +110,12 @@ const BuildShareTools: React.FC<BuildShareToolsProps> = ({
         </button>
         <button
           onClick={() => setShowImportModal(true)}
-          className="px-3 py-1 text-sm rounded transition-all hover:bg-opacity-80 flex items-center gap-1"
+          className="px-3 py-1 text-sm rounded flex items-center gap-1 shadow-md transition-all duration-100 hover:scale-105 hover:bg-opacity-90 active:scale-95 active:brightness-90"
           style={{
             backgroundColor: "var(--grace-color)",
             color: "white",
-            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
+            minWidth: 90,
+            whiteSpace: "nowrap"
           }}
           title="Import build from code"
         >
@@ -140,6 +137,53 @@ const BuildShareTools: React.FC<BuildShareToolsProps> = ({
           </svg>
           Import
         </button>
+        <button
+          onClick={clearAllData}
+          className="px-3 py-1 text-sm rounded flex items-center gap-1 shadow-md transition-all duration-100 hover:scale-105 hover:bg-opacity-90 active:scale-95 active:brightness-90"
+          style={{
+            backgroundColor: "#b91c1c",
+            color: "white",
+            minWidth: 120,
+            whiteSpace: "nowrap"
+          }}
+          title="Clear all saved builder data (reset)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+          Clear Data
+        </button>
+        <a
+          href="https://ko-fi.com/ascriptingoreo"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-1 text-sm rounded flex items-center gap-2 shadow-md transition-all duration-100 hover:scale-105 hover:bg-opacity-90 active:scale-95 active:brightness-90"
+          style={{
+            backgroundColor: "var(--courage-color)",
+            color: "white",
+            minWidth: 130,
+            whiteSpace: "nowrap",
+            justifyContent: "center"
+          }}
+          title="Support the developer on Ko-Fi"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <line x1="6" y1="1" x2="6" y2="4"></line>
+            <line x1="10" y1="1" x2="10" y2="4"></line>
+            <line x1="14" y1="1" x2="14" y2="4"></line>
+          </svg>
+          <span className="font-medium whitespace-nowrap">Send Love</span>
+        </a>
       </div>
 
       {/* Import Modal */}

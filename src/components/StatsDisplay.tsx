@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { SelectedItems } from "../types/build";
 import { resolveDisplayName } from "../utils/api";
+import { getStatIcon, getVirtueIcon } from '../utils/iconUtils';
 import { calculateStats, formatStatValue } from "../utils/statCalculator";
 import { parseMoteEffects } from "../utils/statsParser";
 import StatIcon from "./StatIcon";
@@ -65,15 +66,12 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
   // Helper function to get individual armor and pact contributions with color coding
   const getDefenseContributions = (statType: 'PhysicalDefence' | 'MagickDefence' | 'StabilityIncrease' | 'BonusHP') => {
     const contributions = [];
-    
-    // Armor slots to check - exclude totem since it doesn't contribute to armor stats
     const armorSlots: (keyof SelectedItems)[] = ['helm', 'upperBody', 'lowerBody'];
-    
-    // Check armor pieces for contribution
     for (const slot of armorSlots) {
       const item = selectedItems[slot];
-      if (item?.Stats && item.Stats[statType]) {
-        const value = parseFloat(item.Stats[statType]);
+      // Only check ArmorStats for armor slots
+      if (item?.Stats && typeof item.Stats === 'object' && statType in item.Stats && typeof (item.Stats as any)[statType] === 'string') {
+        const value = parseFloat((item.Stats as any)[statType]);
         if (!isNaN(value) && value > 0) {
           contributions.push({
             slot,
@@ -83,18 +81,14 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
         }
       }
     }
-    
-    // Check pact for contribution
     const pact = selectedItems.pact;
-    if (pact?.Stats) {
+    if (pact?.Stats && typeof pact.Stats === 'object' && statType in pact.Stats && typeof (pact.Stats as any)[statType] === 'string') {
       let pactValue = 0;
-      
       if (statType === 'BonusHP' && pact.Stats.BonusHP) {
         pactValue = parseFloat(pact.Stats.BonusHP);
-      } else if (statType !== 'BonusHP' && pact.Stats[statType]) {
-        pactValue = parseFloat(pact.Stats[statType]);
+      } else if (statType !== 'BonusHP' && (pact.Stats as any)[statType]) {
+        pactValue = parseFloat((pact.Stats as any)[statType]);
       }
-      
       if (!isNaN(pactValue) && pactValue > 0) {
         contributions.push({
           slot: 'pact',
@@ -103,7 +97,6 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
         });
       }
     }
-    
     return contributions;
   };
 
@@ -331,11 +324,6 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
   const stabilityContributions = getDefenseContributions('StabilityIncrease');
   const bonusHPContributions = getDefenseContributions('BonusHP');
   
-  // Get virtue contributions from totems
-  const graceContribution = getVirtueContribution('grace');
-  const spiritContribution = getVirtueContribution('spirit');
-  const courageContribution = getVirtueContribution('courage');
-
   return (
     <div className="space-y-6">
       {/* Defense Stats - Always show */}
@@ -347,7 +335,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <StatIcon 
-                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                iconUrl={getStatIcon('physicalDefence')}
                 value=""
                 alt="Physical Defence"
                 size="small"
@@ -377,7 +365,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <StatIcon 
-                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                iconUrl={getStatIcon('magickDefence')}
                 value=""
                 alt="Magick Defence"
                 size="small"
@@ -407,7 +395,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <StatIcon 
-                iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                iconUrl={getStatIcon('stability')}
                 value=""
                 alt="Stability Increase"
                 size="small"
@@ -437,7 +425,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <img 
-                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                src={getStatIcon('bonusHP')}
                 alt="Bonus HP"
                 className="h-5 w-5"
               />
@@ -468,15 +456,14 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
             <div>
               <div className="text-sm text-gray-400 flex items-center gap-2">
                 <img 
-                  src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Runes/Ode/OdeSpirit003.png"
+                  src={getStatIcon('unarmedDamage')}
                   alt="Unarmed Damage"
-                  className="h-5 w-5 filter-yellow-tint"
+                  className="h-5 w-5"
                 />
                 Unarmed Damage
               </div>
               <div className="text-xl font-bold text-white flex items-center">
                 {formatStatValue(stats.unarmedDamage)}
-                {/* Show that this comes from the pact */}
                 <span className="ml-2 text-sm font-normal" style={{color: PACT_COLOR}}>
                   (Pact)
                 </span>
@@ -578,6 +565,25 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
               </span>
             </div>
           </div>
+          {/* Unarmed Damage row */}
+          {stats.unarmedDamage > 0 && (
+            <div className="col-span-2">
+              <div className="text-sm text-gray-400 flex items-center gap-2">
+                <img 
+                  src={getStatIcon('unarmedDamage')}
+                  alt="Unarmed Damage"
+                  className="h-5 w-5"
+                />
+                Unarmed Damage
+              </div>
+              <div className="text-xl font-bold text-white flex items-center">
+                {formatStatValue(stats.unarmedDamage)}
+                <span className="ml-2 text-sm font-normal" style={{color: PACT_COLOR}}>
+                  (Pact)
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Additional Weapon Stats Section */}
@@ -617,7 +623,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <img 
-                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/GraceSunIcon.png"
+                src={getVirtueIcon('grace')}
                 alt="Grace"
                 className="h-5 w-5"
               />
@@ -643,7 +649,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <img 
-                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/SpiritMoonIcon.png"
+                src={getVirtueIcon('spirit')}
                 alt="Spirit"
                 className="h-5 w-5"
               />
@@ -669,7 +675,7 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
           <div>
             <div className="text-sm text-gray-400 flex items-center gap-2">
               <img 
-                src="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/CourageSunIcon.png"
+                src={getVirtueIcon('courage')}
                 alt="Courage"
                 className="h-5 w-5"
               />

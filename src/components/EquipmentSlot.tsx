@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { SelectedItems } from "../types/build";
+import { getStatIcon, getVirtueIcon } from '../utils/iconUtils';
 import Modal from "./Modal";
 import MoteSelector from "./MoteSelector";
 import StatIcon from "./StatIcon";
@@ -506,11 +507,11 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
             )}
 
             {/* Pact Stats Display - only for pacts */}
-            {isPactSlot(slotType) && selectedItem?.Stats && (
-              <div className="armor-stats-container">
+            {isPactSlot(slotType) && selectedItem && 'Stats' in selectedItem && selectedItem.Stats && (
+              <div className="armor-stats-container flex-wrap justify-center" style={{fontSize: '1.25rem', fontWeight: 600, gap: '1.25rem'}}>
                 {selectedItem.Stats.PhysicalDefence && (
                   <StatIcon
-                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                    iconUrl={getStatIcon('physicalDefence')}
                     value={selectedItem.Stats.PhysicalDefence}
                     alt="Physical Defence"
                     size="small"
@@ -518,7 +519,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                 )}
                 {selectedItem.Stats.MagickDefence && (
                   <StatIcon
-                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
+                    iconUrl={getStatIcon('magickDefence')}
                     value={selectedItem.Stats.MagickDefence}
                     alt="Magick Defence"
                     size="small"
@@ -526,7 +527,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                 )}
                 {selectedItem.Stats.StabilityIncrease && (
                   <StatIcon
-                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
+                    iconUrl={getStatIcon('stability')}
                     value={selectedItem.Stats.StabilityIncrease}
                     alt="Stability Increase"
                     size="small"
@@ -534,7 +535,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                 )}
                 {selectedItem.Stats.BonusHP && (
                   <StatIcon
-                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                    iconUrl={getStatIcon('bonusHP')}
                     value={selectedItem.Stats.BonusHP}
                     alt="Bonus HP"
                     size="small"
@@ -542,37 +543,32 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                 )}
                 {selectedItem.Stats.UnarmedDmg && (
                   <StatIcon
-                    iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                    iconUrl={getStatIcon('unarmedDamage')}
                     value={selectedItem.Stats.UnarmedDmg}
                     alt="Unarmed Damage"
                     size="small"
                   />
                 )}
-                {/* Display Bonus Virtue if available */}
+                {/* Display Bonus Virtue if available, using icon and value only */}
                 {selectedItem.Stats.BonusVirtue && (
-                  <div 
-                    className="virtue-badge flex items-center justify-center"
-                    style={{
-                      backgroundColor: `${getVirtueColor(selectedItem.Stats.BonusVirtue.Type)}20`,
-                      borderColor: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
-                      color: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
-                      padding: "0.25rem 0.75rem",
-                      borderRadius: "4px",
-                      border: `1px solid`,
-                      fontWeight: "500",
-                      textAlign: "center",
-                      width: "100%"
-                    }}
-                  >
+                  <div className="virtue-badge flex items-center justify-center" style={{
+                    backgroundColor: `${getVirtueColor(selectedItem.Stats.BonusVirtue.Type)}20`,
+                    borderColor: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
+                    color: getVirtueColor(selectedItem.Stats.BonusVirtue.Type),
+                    padding: "0.35rem 1.1rem",
+                    borderRadius: "4px",
+                    border: `1px solid`,
+                    fontWeight: "700",
+                    textAlign: "center",
+                    width: "100%",
+                    fontSize: "1.25rem"
+                  }}>
                     <img 
-                      src={`https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/${
-                        selectedItem.Stats.BonusVirtue.Type === 'Grace' ? 'GraceSunIcon' :
-                        selectedItem.Stats.BonusVirtue.Type === 'Spirit' ? 'SpiritMoonIcon' : 'CourageSunIcon'
-                      }.png`}
+                      src={getVirtueIcon(selectedItem.Stats.BonusVirtue.Type)}
                       alt={selectedItem.Stats.BonusVirtue.Type}
-                      className="h-4 w-4 mr-1.5"
+                      className="h-6 w-6 mr-2"
                     />
-                    {selectedItem.Stats.BonusVirtue.Type}: +{selectedItem.Stats.BonusVirtue.Value}
+                    +{selectedItem.Stats.BonusVirtue.Value}
                   </div>
                 )}
               </div>
@@ -810,7 +806,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
                       )}
                       {item.Stats.UnarmedDmg && (
                         <StatIcon
-                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
+                          iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Runes/Ode/OdeSpirit003.png"
                           value={item.Stats.UnarmedDmg}
                           alt="Unarmed Damage"
                           size="small"

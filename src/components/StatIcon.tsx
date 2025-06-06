@@ -34,7 +34,10 @@ const StatIcon: React.FC<StatIconProps> = ({
       <img
         src={iconUrl}
         alt={alt}
-        className="w-full h-full object-contain filter-yellow-tint"
+        className={`w-full h-full object-contain${
+          // Only apply yellow tint for 'All Virtues' or if explicitly requested in the future
+          alt === 'All Virtues' ? ' filter-yellow-tint' : ''
+        }`}
       />
       {value && (
         <div
