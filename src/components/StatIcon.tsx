@@ -2,47 +2,53 @@ import React from "react";
 
 interface StatIconProps {
   iconUrl: string;
-  value: string | undefined;
+  value: string | number;
   alt: string;
-  size?: "small" | "medium" | "large";
-  tinted?: boolean;
+  size?: "small" | "medium" | "large" | "tiny"; // Added "tiny" option
 }
 
 const StatIcon: React.FC<StatIconProps> = ({ 
   iconUrl, 
   value, 
   alt, 
-  size = "medium", 
-  tinted = true 
+  size = "medium" 
 }) => {
-  const sizeMap = {
-    small: {
-      container: "h-5 gap-1",
-      icon: "h-4 w-4",
-      text: "text-xs"
-    },
-    medium: {
-      container: "h-6 gap-1.5",
-      icon: "h-5 w-5",
-      text: "text-sm"
-    },
-    large: {
-      container: "h-7 gap-2",
-      icon: "h-6 w-6",
-      text: "text-base"
-    }
+  // Determine dimensions based on size prop
+  const dimensions = {
+    tiny: { width: "1.5rem", height: "1.5rem", fontSize: "0.6rem" },
+    small: { width: "2rem", height: "2rem", fontSize: "0.75rem" },
+    medium: { width: "2.5rem", height: "2.5rem", fontSize: "0.875rem" },
+    large: { width: "3rem", height: "3rem", fontSize: "1rem" },
   };
 
-  const sizeClass = sizeMap[size];
+  const { width, height, fontSize } = dimensions[size];
 
   return (
-    <div className={`flex items-center ${sizeClass.container}`} title={`${alt}: ${value}`}>
-      <img 
-        src={iconUrl} 
-        alt={alt} 
-        className={`${sizeClass.icon} ${tinted ? 'filter-yellow-tint' : ''}`}
+    <div
+      className={`stat-icon ${size} relative inline-block`}
+      style={{
+        width,
+        height,
+      }}
+    >
+      <img
+        src={iconUrl}
+        alt={alt}
+        className="w-full h-full object-contain filter-yellow-tint"
       />
-      <span className={`${sizeClass.text} text-text-secondary`}>{value || ""}</span>
+      {value && (
+        <div
+          className="absolute bottom-0 right-0 bg-black bg-opacity-70 rounded-full px-1"
+          style={{
+            fontSize,
+            minWidth: "1rem",
+            transform: "translate(25%, 25%)",
+            zIndex: 2,
+          }}
+        >
+          {value}
+        </div>
+      )}
     </div>
   );
 };

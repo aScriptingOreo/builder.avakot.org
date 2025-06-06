@@ -5,6 +5,7 @@ import StatsDisplay from "@components/StatsDisplay";
 import { SelectedItems } from "@types/build";
 import localforage from "localforage";
 import React, { useEffect, useState } from "react";
+import SearchBar from "./components/SearchBar";
 
 interface MoteItem {
   MoteID: string;
@@ -335,6 +336,13 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="w-full px-6 py-8" style={{ paddingTop: "4rem" }}>
+        {/* Add SearchBar above the three-column-grid */}
+        <SearchBar
+          selectedItems={selectedItems}
+          onItemSelect={handleItemSelect}
+          onItemRemove={handleItemRemove} // Add this prop
+        />
+
         <div className="three-column-grid w-full max-w-none">
           {/* Equipment Selection */}
           <div className="card">

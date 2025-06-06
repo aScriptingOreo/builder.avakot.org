@@ -468,7 +468,7 @@
 }
 
 /* ===== ITEM IMAGE BACKGROUND SYSTEM ===== */
-/* Two-layer background: dark grey box + decorative border */
+/* Two-layer background: decorative border only, removing dark grey box */
 .item-image-container::before {
   content: "";
   position: absolute;
@@ -477,7 +477,7 @@
   transform: translate(-50%, -50%);
   width: 85%; 
   height: 85%;
-  background-color: #2a2a2a; /* Dark grey */
+  /* Remove the background-color to make it transparent instead of dark grey */
   border-radius: 3px;
   z-index: 1;
 }
@@ -659,4 +659,135 @@
 
 .text-yellow-shiny {
   color: var(--yellow-shiny) !important;
+}
+
+/* ===== SEARCH BAR STYLING ===== */
+.search-container {
+  position: relative;
+  width: 100%;
+  z-index: 100;
+}
+
+.search-panel {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.search-results .item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Updated styling for search results item stats */
+.search-results .item-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Remove transform scale since we're now using proper size */
+.item-stats .stat-icon {
+  /* Remove transform: scale(0.8); */
+  margin: 0 0.25rem;
+}
+
+/* Add some extra height to item cards in search results to accommodate larger stats */
+.search-results .item-card {
+  min-height: auto;
+  padding: 0.5rem;
+  height: auto; /* Let it grow as needed */
+}
+
+/* Spinner for loading state */
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Smaller stat icons for search results */
+.item-stats .stat-icon {
+  transform: scale(0.8);
+}
+
+/* Define a "tiny" size for StatIcon component */
+.stat-icon.tiny {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  font-size: 0.6rem !important;
+}
+
+/* ===== SEARCH MODAL STYLING ===== */
+.search-modal .modal-content {
+  width: 95%;  /* Increased from 90% */
+  max-width: 1200px;  /* Increased from 1000px */
+}
+
+.search-modal .modal-body {
+  padding: 1.5rem;
+  max-height: 75vh;  /* Increased from 60vh (default for all modals) */
+}
+
+.search-modal .item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));  /* Reduced from 140px */
+  gap: 0.75rem;  /* Reduced from 1rem to fit more items */
+  max-height: 65vh;  /* Explicit max-height for the grid */
+  overflow-y: auto;
+}
+
+/* Ensure "Equipped" badge appears above item images in search results */
+.item-card .absolute {
+  z-index: 10; /* Higher z-index to make it appear above the item image */
+}
+
+/* Make "Equipped" badge more prominent */
+.item-card .bg-yellow-500 {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== ADVANCED SEARCH STYLING ===== */
+/* ...existing search styling... */
+
+/* Circular search button styling */
+.search-button {
+  background-color: var(--accent-primary) !important;
+  color: var(--text-lightest) !important;
+  border: 1px solid var(--accent-secondary) !important;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.search-button:hover {
+  background-color: var(--accent-secondary) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.search-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Search input styling */
+.search-input-wrapper input {
+  border-radius: 6px;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }

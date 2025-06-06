@@ -72,6 +72,7 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     slotIndex: null,
   });
 
+  // Modified handleSlotClick to work regardless of whether an item is equipped
   const handleSlotClick = async (e?: React.MouseEvent) => {
     // Prevent event propagation that might cause conflicts
     if (e) {
@@ -79,7 +80,8 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       e.stopPropagation();
     }
 
-    if (selectedItem || isLoading) return;
+    // Don't prevent opening if there's already an item - just check for loading state
+    if (isLoading) return;
 
     setIsLoading(true);
 
@@ -154,6 +156,13 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // New function to handle the change item button
+  const handleChangeItem = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSlotClick(); // Reuse the existing function to open the modal
   };
 
   // Map slot names to GraphQL queries - Use armorsBySlot and weaponsBySlot for filtering
@@ -358,9 +367,9 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
             backgroundColor: "rgba(209, 149, 54, 0.1)",
           }),
           ...(isLoading && { opacity: 0.5, cursor: "wait" }),
-          ...(!isLoading && !selectedItem && { cursor: "pointer" }),
+          ...(!isLoading && { cursor: "pointer" }), // Always show pointer cursor when not loading
         }}
-        onClick={handleSlotClick}
+        onClick={handleSlotClick} // Always call handleSlotClick when card is clicked, whether empty or filled
       >
         <div className="flex items-center justify-between mb-2">
           <h3
@@ -372,18 +381,24 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
             {getSlotDisplayName(slotType)}
           </h3>
           {selectedItem && (
-            <button
-              onClick={handleRemoveItem}
-              className="btn-danger"
-              style={{
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.875rem",
-                minWidth: "auto",
-              }}
-              title="Remove item"
-            >
-              ✕
-            </button>
+            <div className="flex gap-1">
+              {/* Remove the Change button, keeping only the Remove button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering the card's onClick
+                  handleRemoveItem(e);
+                }}
+                className="btn-danger"
+                style={{
+                  padding: "0.25rem 0.5rem",
+                  fontSize: "0.875rem",
+                  minWidth: "auto",
+                }}
+                title="Remove item"
+              >
+                ✕
+              </button>
+            </div>
           )}
         </div>
 
