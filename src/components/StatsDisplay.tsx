@@ -114,21 +114,19 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
     // Check totem contribution
     const totem = selectedItems.totem;
     if (totem?.Stats?.Virtue) {
-      // Check if it's an AllVirtues totem
-      if (totem.Stats.Virtue.Type?.toLowerCase() === "allvirtues") {
-        const value = parseFloat(totem.Stats.Virtue.Value);
-        if (!isNaN(value) && value > 0) {
-          contributions.push({
-            value,
-            color: ARMOR_SLOT_COLORS.totem,
-            source: "totem"
-          });
-        }
-      } 
-      // Check for single virtue match
-      else if (totem.Stats.Virtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
-        const value = parseFloat(totem.Stats.Virtue.Value);
-        if (!isNaN(value) && value > 0) {
+      const vType = totem.Stats.Virtue.Type?.toLowerCase();
+      const value = parseFloat(totem.Stats.Virtue.Value);
+      if (!isNaN(value) && value > 0) {
+        if (vType === "allvirtues") {
+          // AllVirtues: add a contribution for each virtue type
+          if (["grace", "spirit", "courage"].includes(virtueType.toLowerCase())) {
+            contributions.push({
+              value,
+              color: ARMOR_SLOT_COLORS.totem,
+              source: "totem"
+            });
+          }
+        } else if (vType === virtueType.toLowerCase()) {
           contributions.push({
             value,
             color: ARMOR_SLOT_COLORS.totem,
@@ -141,19 +139,18 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
     // Check pact contribution
     const pact = selectedItems.pact;
     if (pact?.Stats?.BonusVirtue) {
-      if (pact.Stats.BonusVirtue.Type?.toLowerCase() === "allvirtues") {
-        const value = parseFloat(pact.Stats.BonusVirtue.Value);
-        if (!isNaN(value) && value > 0) {
-          contributions.push({
-            value,
-            color: PACT_COLOR,
-            source: "pact"
-          });
-        }
-      }
-      else if (pact.Stats.BonusVirtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
-        const value = parseFloat(pact.Stats.BonusVirtue.Value);
-        if (!isNaN(value) && value > 0) {
+      const vType = pact.Stats.BonusVirtue.Type?.toLowerCase();
+      const value = parseFloat(pact.Stats.BonusVirtue.Value);
+      if (!isNaN(value) && value > 0) {
+        if (vType === "allvirtues") {
+          if (["grace", "spirit", "courage"].includes(virtueType.toLowerCase())) {
+            contributions.push({
+              value,
+              color: PACT_COLOR,
+              source: "pact"
+            });
+          }
+        } else if (vType === virtueType.toLowerCase()) {
           contributions.push({
             value,
             color: PACT_COLOR,
@@ -167,8 +164,9 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
     // Process weapons
     ['primary', 'sidearm'].forEach(weaponSlot => {
       const weapon = selectedItems[weaponSlot as keyof SelectedItems];
-      if (weapon?.Motes) {
-        weapon.Motes.forEach(mote => {
+      // Only WeaponItem has Motes
+      if (weapon && 'Motes' in weapon && Array.isArray(weapon.Motes)) {
+        weapon.Motes.forEach((mote: any) => {
           if (mote && typeof mote.Effect === 'string' && mote.Effect.includes(virtueType)) {
             // Parse virtue value from effect description
             const match = mote.Effect.match(new RegExp(`${virtueType}\\s*\\+\\s*(\\d+)`, 'i'));
@@ -186,11 +184,10 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({
         });
       }
     });
-    
     // Check pact motes
-    const pactMotes = selectedItems.pact?.Motes;
+    const pactMotes = (selectedItems.pact && 'Motes' in selectedItems.pact && Array.isArray(selectedItems.pact.Motes)) ? selectedItems.pact.Motes : undefined;
     if (pactMotes) {
-      pactMotes.forEach(mote => {
+      pactMotes.forEach((mote: any) => {
         if (mote && typeof mote.Effect === 'string' && mote.Effect.includes(virtueType)) {
           const match = mote.Effect.match(new RegExp(`${virtueType}\\s*\\+\\s*(\\d+)`, 'i'));
           if (match && match[1]) {
