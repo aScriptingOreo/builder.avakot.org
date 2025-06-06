@@ -23,8 +23,8 @@ const FILTER_OPTIONS = {
   ],
   slot: [
     { value: 'helm', label: 'Helm', color: ARMOR_SLOT_COLORS.helm },
-    { value: 'upperBody', label: 'Upper Body', color: ARMOR_SLOT_COLORS.upperBody },
-    { value: 'lowerBody', label: 'Lower Body', color: ARMOR_SLOT_COLORS.lowerBody },
+    { value: 'upperBody', label: 'Cuirass', color: ARMOR_SLOT_COLORS.upperBody },
+    { value: 'lowerBody', label: 'Leggings', color: ARMOR_SLOT_COLORS.lowerBody },
     { value: 'totem', label: 'Totem', color: ARMOR_SLOT_COLORS.totem },
     { value: 'primary', label: 'Primary', color: '#ef4444' },
     { value: 'sidearm', label: 'Sidearm', color: '#dc2626' },
@@ -596,6 +596,35 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
+  // Helper to get user-facing slot display name
+  const getSlotDisplayName = (slot: string): string => {
+    switch (slot) {
+      case 'Helm':
+      case 'helm':
+        return 'Helm';
+      case 'UpperBody':
+      case 'upperBody':
+        return 'Cuirass';
+      case 'LowerBody':
+      case 'lowerBody':
+        return 'Leggings';
+      case 'Totem':
+      case 'totem':
+        return 'Totem';
+      case 'Primary':
+      case 'primary':
+        return 'Primary';
+      case 'Sidearm':
+      case 'sidearm':
+        return 'Sidearm';
+      case 'Pact':
+      case 'pact':
+        return 'Pact';
+      default:
+        return slot;
+    }
+  };
+
   return (
     <div className="search-container mb-4">
       <button 
@@ -623,7 +652,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                   style={{ backgroundColor: pill.color }}
                 >
                   <span className="font-medium">{pill.type}:</span>
-                  <span>{pill.label}</span>
+                  <span>{pill.type === 'slot' ? getSlotDisplayName(pill.label) : pill.label}</span>
                   <button
                     className="ml-1 hover:bg-white hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center"
                     onClick={() => removeFilterPill(index)}
@@ -800,7 +829,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       )}
                       
                       <div className="item-slot text-xs text-gray-500">
-                        {slotType}
+                        {getSlotDisplayName(slotType)}
                       </div>
                       
                       {/* Show stats based on item type */}

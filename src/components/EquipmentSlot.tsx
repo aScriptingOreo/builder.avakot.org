@@ -200,10 +200,10 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
     switch (slotType) {
       case "helm":
         return "Helm";
-      case "upperBody": // Fix: was "upperbody"
-        return "Upper Body";
-      case "lowerBody": // Fix: was "lowerbody"
-        return "Lower Body";
+      case "upperBody":
+        return "Cuirass";
+      case "lowerBody":
+        return "Leggings";
       case "totem":
         return "Totem";
       case "primary":
@@ -363,14 +363,13 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       <div
         className="equipment-slot-card"
         style={{
-          ...(selectedItem && {
-            borderColor: "var(--yellow-shiny)",
-            backgroundColor: "rgba(209, 149, 54, 0.1)",
-          }),
+          // Use slot color for border if equipped, else accent-subtle
+          border: `1px solid ${getSlotColor(slotType) || 'var(--accent-subtle)'}`,
+          backgroundColor: selectedItem ? "rgba(209, 149, 54, 0.1)" : undefined,
           ...(isLoading && { opacity: 0.5, cursor: "wait" }),
-          ...(!isLoading && { cursor: "pointer" }), // Always show pointer cursor when not loading
+          ...(!isLoading && { cursor: "pointer" }),
         }}
-        onClick={handleSlotClick} // Always call handleSlotClick when card is clicked, whether empty or filled
+        onClick={handleSlotClick}
       >
         <div className="flex items-center justify-between mb-2">
           <h3

@@ -49,7 +49,9 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
               onMoteSelect("upperBody", moteIndex, mote)
             }
             onMoteRemove={(moteIndex) => onMoteRemove("upperBody", moteIndex)}
-          />
+          >
+            <span className="equipment-slot-label">Cuirass</span>
+          </EquipmentSlot>
           <EquipmentSlot
             slotType="lowerBody"
             selectedItem={selectedItems.lowerBody}
@@ -60,7 +62,9 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({
               onMoteSelect("lowerBody", moteIndex, mote)
             }
             onMoteRemove={(moteIndex) => onMoteRemove("lowerBody", moteIndex)}
-          />
+          >
+            <span className="equipment-slot-label">Leggings</span>
+          </EquipmentSlot>
           <EquipmentSlot
             slotType="totem"
             selectedItem={selectedItems.totem}
