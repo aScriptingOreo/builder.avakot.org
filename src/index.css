@@ -679,26 +679,13 @@
   gap: 0.75rem;
 }
 
-/* Updated styling for search results item stats */
-.search-results .item-stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-/* Remove transform scale since we're now using proper size */
-.item-stats .stat-icon {
-  /* Remove transform: scale(0.8); */
-  margin: 0 0.25rem;
-}
-
-/* Add some extra height to item cards in search results to accommodate larger stats */
 .search-results .item-card {
   min-height: auto;
   padding: 0.5rem;
-  height: auto; /* Let it grow as needed */
+}
+
+.search-results .item-image-container {
+  height: 80px;
 }
 
 /* Spinner for loading state */
@@ -737,29 +724,55 @@
 
 .search-modal .modal-body {
   padding: 1.5rem;
-  max-height: 75vh;  /* Increased from 60vh (default for all modals) */
+  max-height: 80vh;  /* Increased max height */
+  overflow: hidden; /* Prevent modal body from scrolling */
+}
+
+/* Fixed search layout with scrollable results */
+.fixed-search-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 75vh;
+}
+
+/* Fixed search bar area */
+.search-bar-fixed {
+  flex-shrink: 0; /* Prevent search bar from shrinking */
+}
+
+/* Scrollable results container */
+.search-results-scrollable {
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 200px;
+  max-height: calc(70vh - 180px); /* Adjust based on your search bar height */
 }
 
 .search-modal .item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));  /* Reduced from 140px */
-  gap: 0.75rem;  /* Reduced from 1rem to fit more items */
-  max-height: 65vh;  /* Explicit max-height for the grid */
-  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+  padding-bottom: 20px; /* Add some padding at the bottom */
 }
 
-/* Ensure "Equipped" badge appears above item images in search results */
-.item-card .absolute {
-  z-index: 10; /* Higher z-index to make it appear above the item image */
+.search-results .item-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-/* Make "Equipped" badge more prominent */
-.item-card .bg-yellow-500 {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+.item-stats .stat-icon {
+  margin: 0 0.25rem;
 }
 
-/* ===== ADVANCED SEARCH STYLING ===== */
-/* ...existing search styling... */
+.search-results .item-card {
+  min-height: auto;
+  padding: 0.5rem;
+  height: auto; /* Let it grow as needed */
+}
 
 /* Circular search button styling */
 .search-button {

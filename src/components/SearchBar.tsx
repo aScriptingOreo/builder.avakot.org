@@ -586,6 +586,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
+  // Helper function to get virtue icon URL
+  const getVirtueIcon = (type: string): string => {
+    switch (type?.toLowerCase()) {
+      case "grace": return "https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/GraceSunIcon.png";
+      case "spirit": return "https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/SpiritMoonIcon.png";
+      case "courage": return "https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/CourageSunIcon.png";
+      default: return "https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Icons/StarIcon.png";
+    }
+  };
+
   return (
     <div className="search-container mb-4">
       <button 
@@ -601,9 +611,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
         title="Search Equipment"
         className="search-modal"
       >
-        <div className="search-content">
-          {/* Advanced Search UI */}
-          <div className="search-input-wrapper relative mb-4">
+        <div className="search-content fixed-search-layout">
+          {/* Fixed Search Bar Section */}
+          <div className="search-bar-fixed">
             {/* Filter Pills */}
             <div className="filter-pills flex flex-wrap gap-2 mb-2">
               {filterPills.map((pill, index) => (
@@ -648,11 +658,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
               />
               <button 
                 className="search-button ml-3 flex items-center justify-center rounded-full"
-                onClick={filterItems} // Call filterItems directly
+                onClick={filterItems}
                 title="Search"
                 aria-label="Search"
               >
-                {/* Magnifying Glass SVG Icon */}
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
                   width="20" 
@@ -695,27 +704,27 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 </ul>
               </div>
             )}
-          </div>
-          
-          {/* Search Hints */}
-          <div className="search-hints text-xs text-gray-400 mb-4">
-            <p>
-              Search by item name, or use filters like <span className="text-yellow-500">type:</span> (armor, weapon, pact), 
-              <span className="text-yellow-500"> slot:</span> (helm, totem, etc.), 
-              <span className="text-yellow-500"> stat:</span>, 
-              <span className="text-yellow-500"> virtue:</span>, or 
-              <span className="text-yellow-500"> set:</span>
-            </p>
             
-            {/* Search Results Summary - Moved from footer to here */}
-            <p className="mt-2 flex justify-between items-center">
-              <span className="font-medium">{searchResults.length} items found</span>
-              <span>Click an item to {isWideEnough ? 'equip or unequip it' : 'equip it'}</span>
-            </p>
+            {/* Search Hints */}
+            <div className="search-hints text-xs text-gray-400 mb-4">
+              <p>
+                Search by item name, or use filters like <span className="text-yellow-500">type:</span> (armor, weapon, pact), 
+                <span className="text-yellow-500"> slot:</span> (helm, totem, etc.), 
+                <span className="text-yellow-500"> stat:</span>, 
+                <span className="text-yellow-500"> virtue:</span>, or 
+                <span className="text-yellow-500"> set:</span>
+              </p>
+              
+              {/* Search Results Summary */}
+              <p className="mt-2 flex justify-between items-center">
+                <span className="font-medium">{searchResults.length} items found</span>
+                <span>Click an item to {isWideEnough ? 'equip or unequip it' : 'equip it'}</span>
+              </p>
+            </div>
           </div>
           
-          {/* Search Results Section */}
-          <div className="search-results">
+          {/* Scrollable Results Section */}
+          <div className="search-results-scrollable">
             {isLoading ? (
               <div className="loading-indicator text-center py-8">
                 <div className="spinner"></div>
@@ -728,12 +737,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
                   'Enter search terms or select filters to find items'}
               </div>
             ) : (
-              <div className="item-grid max-h-[50vh] overflow-y-auto p-2">
+              <div className="item-grid p-2">
                 {searchResults.map((item) => {
                   const itemKey = item.LinkusMap || item.LinkusAlias || Math.random();
                   const displayName = item.DisplayName || item.LinkusAlias;
                   const itemImage = getItemImage(item);
                   const slotType = item.Slot || 'Pact';
+                  const isPact = !item.Slot;
+                  const isWeapon = item.Slot === 'Primary' || item.Slot === 'Sidearm';
                   
                   // Check if item is already equipped in any slot
                   let isEquipped = false;
@@ -792,15 +803,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
                         {slotType}
                       </div>
                       
-                      {/* Show basic stats if available */}
+                      {/* Show stats based on item type */}
                       {item.Stats && (
                         <div className="item-stats mt-1 flex flex-wrap justify-center gap-1">
+                          {/* Standard armor stats */}
                           {item.Stats.PhysicalDefence && (
                             <StatIcon
                               iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/PhysicalIcon.png"
                               value={item.Stats.PhysicalDefence}
                               alt="Physical"
-                              size="small" // Changed from "tiny" to "small"
+                              size="small"
                             />
                           )}
                           {item.Stats.MagickDefence && (
@@ -808,7 +820,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                               iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/MagicIcon.png"
                               value={item.Stats.MagickDefence}
                               alt="Magick"
-                              size="small" // Changed from "tiny" to "small"
+                              size="small"
                             />
                           )}
                           {item.Stats.StabilityIncrease && (
@@ -816,14 +828,70 @@ const SearchBar: React.FC<SearchBarProps> = ({
                               iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StabilityIcon.png"
                               value={item.Stats.StabilityIncrease}
                               alt="Stability"
-                              size="small" // Changed from "tiny" to "small"
+                              size="small"
                             />
                           )}
-                          {/* Virtue display remains the same as it was fine */}
+                          
+                          {/* Pact specific stats */}
+                          {isPact && item.Stats.BonusHP && (
+                            <StatIcon
+                              iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/HUD/HealthBar/CharmedHeart.png"
+                              value={item.Stats.BonusHP}
+                              alt="Bonus HP"
+                              size="small"
+                            />
+                          )}
+                          {isPact && item.Stats.UnarmedDmg && (
+                            <StatIcon
+                              iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Runes/Ode/OdeSpirit003.png"
+                              value={item.Stats.UnarmedDmg}
+                              alt="Unarmed Damage"
+                              size="small"
+                            />
+                          )}
+                          
+                          {/* Weapon specific stats */}
+                          {isWeapon && item.Stats.lvl0?.Attack && (
+                            <StatIcon
+                              iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/AttackIcon.png"
+                              value={item.Stats.lvl0.Attack}
+                              alt="Attack"
+                              size="small"
+                            />
+                          )}
+                          {isWeapon && item.Stats.lvl0?.ChargedAttack && (
+                            <StatIcon
+                              iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/ChargedIcon.png"
+                              value={item.Stats.lvl0.ChargedAttack}
+                              alt="Charged Attack"
+                              size="small"
+                            />
+                          )}
+                          {isWeapon && item.Stats.lvl0?.Stagger && (
+                            <StatIcon
+                              iconUrl="https://s3.7thseraph.org/wiki.avakot.org/soulframe.icons/release/Graphics/Equipment/Stats/StaggerIcon.png"
+                              value={item.Stats.lvl0.Stagger}
+                              alt="Stagger"
+                              size="small"
+                            />
+                          )}
+                          
+                          {/* Virtue display for both totem and pact */}
                           {item.Stats.Virtue && (
-                            <div className="text-xs" style={{ color: getVirtueColor(item.Stats.Virtue.Type) }}>
-                              {item.Stats.Virtue.Type}: +{item.Stats.Virtue.Value}
-                            </div>
+                            <StatIcon
+                              iconUrl={getVirtueIcon(item.Stats.Virtue.Type)}
+                              value={item.Stats.Virtue.Value}
+                              alt={item.Stats.Virtue.Type}
+                              size="small"
+                            />
+                          )}
+                          {item.Stats.BonusVirtue && (
+                            <StatIcon
+                              iconUrl={getVirtueIcon(item.Stats.BonusVirtue.Type)}
+                              value={item.Stats.BonusVirtue.Value}
+                              alt={item.Stats.BonusVirtue.Type}
+                              size="small"
+                            />
                           )}
                         </div>
                       )}
