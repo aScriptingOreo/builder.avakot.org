@@ -382,7 +382,6 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
           </h3>
           {selectedItem && (
             <div className="flex gap-1">
-              {/* Remove the Change button, keeping only the Remove button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent triggering the card's onClick
@@ -407,12 +406,22 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
             <div className="flex items-center space-x-3">
               {getItemImage(selectedItem) && (
                 <div
-                  className="item-image-container"
+                  className="item-image-container relative"
                   style={{
                     width: "3rem",
                     height: "3rem",
                   }}
                 >
+                  {/* Check if this item is equipped elsewhere */}
+                  {checkIfItemEquippedElsewhere(selectedItem.LinkusAlias, slotType) && (
+                    <div
+                      className="absolute top-0 right-0 bg-yellow-500 text-black text-xs py-0.5 px-1 
+                                rounded-full z-30 transform -translate-y-1 translate-x-1 flex items-center"
+                      style={{ fontSize: "0.6rem" }}
+                    >
+                      <span>Also Equipped</span>
+                    </div>
+                  )}
                   <img
                     src={getItemImage(selectedItem)}
                     alt={selectedItem.DisplayName || selectedItem.LinkusAlias}
@@ -859,6 +868,22 @@ const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       )}
     </>
   );
+
+  // Helper function to check if this item is equipped in another slot
+  function checkIfItemEquippedElsewhere(linkusAlias: string, currentSlot: keyof SelectedItems): boolean {
+    if (!linkusAlias) return false;
+    
+    // Check all slots except the current one
+    for (const [slot, item] of Object.entries(selectedItems)) {
+      if (slot !== currentSlot && 
+          item && 
+          item.LinkusAlias === linkusAlias) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
 };
 
 export default EquipmentSlot;

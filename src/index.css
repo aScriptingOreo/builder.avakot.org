@@ -804,3 +804,15 @@
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
+
+/* Ensure "Equipped" badge appears above item images */
+.item-card .absolute, 
+.item-image-container .absolute {
+  z-index: 30;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Make "Equipped" badge more prominent */
+.bg-yellow-500 {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

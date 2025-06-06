@@ -768,7 +768,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       }
                     >
                       {isEquipped && (
-                        <div className="absolute top-1 right-1 bg-yellow-500 text-black text-xs py-0.5 px-2 rounded-full flex items-center gap-1">
+                        <div className="absolute top-1 right-1 bg-yellow-500 text-black text-xs py-0.5 px-2 rounded-full flex items-center gap-1 z-30">
                           <span>Equipped</span>
                           <span className="text-xs">&times;</span>
                         </div>

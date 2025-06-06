@@ -1,10 +1,10 @@
 import BuildShareTools from "@components/BuildShareTools";
-import BuildSummaryText from "@components/BuildSummaryText";
 import ItemSelector from "@components/ItemSelector";
 import StatsDisplay from "@components/StatsDisplay";
 import { SelectedItems } from "@types/build";
 import localforage from "localforage";
 import React, { useEffect, useState } from "react";
+import PlayerStats from "./components/PlayerStats";
 import SearchBar from "./components/SearchBar";
 
 interface MoteItem {
@@ -34,6 +34,11 @@ const App: React.FC = () => {
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [playerVirtues, setPlayerVirtues] = useState({
+    grace: 0,
+    spirit: 0,
+    courage: 0,
+  });
 
   // Load saved build from localStorage on component mount
   useEffect(() => {
@@ -234,6 +239,13 @@ const App: React.FC = () => {
     });
   };
 
+  // Add handler for virtue point changes
+  const handleVirtuePointsChange = (
+    virtues: { grace: number; spirit: number; courage: number }
+  ) => {
+    setPlayerVirtues(virtues);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -360,25 +372,35 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Build Summary - Now using BuildSummaryText component */}
-          <div className="card">
-            <div className="card-header">
-              <h2>Build Summary</h2>
-            </div>
-            <div className="card-body scrollable-content">
-              <BuildSummaryText selectedItems={selectedItems} />
-            </div>
-          </div>
-
           {/* Build Stats */}
           <div className="card">
             <div className="card-header">
               <h2>Stats</h2>
             </div>
             <div className="card-body scrollable-content">
-              <StatsDisplay selectedItems={selectedItems} />
+              <StatsDisplay selectedItems={selectedItems} playerVirtues={playerVirtues} />
             </div>
           </div>
+
+          {/* Player Stats - Replacing BuildSummaryText */}
+          <div className="card">
+            <div className="card-header">
+              <h2>Character</h2>
+            </div>
+            <div className="card-body scrollable-content">
+              <PlayerStats onVirtuePointsChange={handleVirtuePointsChange} />
+            </div>
+          </div>
+
+          {/* Build Summary - Now using BuildSummaryText component */}
+          {/* <div className="card">
+            <div className="card-header">
+              <h2>Build Summary</h2>
+            </div>
+            <div className="card-body scrollable-content">
+              <BuildSummaryText selectedItems={selectedItems} />
+            </div>
+          </div> */}
         </div>
       </main>
     </div>

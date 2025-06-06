@@ -7,6 +7,11 @@ import StatIcon from "./StatIcon";
 
 interface StatsDisplayProps {
   selectedItems: SelectedItems;
+  playerVirtues: {
+    grace: number;
+    spirit: number;
+    courage: number;
+  };
 }
 
 // Define colors for each armor slot
@@ -20,7 +25,10 @@ const ARMOR_SLOT_COLORS = {
 // Add Pact color
 const PACT_COLOR = "#ef4444"; // Red
 
-const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
+const StatsDisplay: React.FC<StatsDisplayProps> = ({ 
+  selectedItems,
+  playerVirtues 
+}) => {
   const [itemDisplayNames, setItemDisplayNames] = useState<
     Record<string, string>
   >({});
@@ -99,37 +107,130 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
     return contributions;
   };
 
-  // Helper function to get virtue contributions from totems
+  // Update the getVirtueContribution function to handle AllVirtues
   const getVirtueContribution = (virtueType: string) => {
+    const contributions = [];
+    
     // Check totem contribution
     const totem = selectedItems.totem;
-    if (totem?.Stats?.Virtue && 
-        totem.Stats.Virtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
-      const value = parseFloat(totem.Stats.Virtue.Value);
-      if (!isNaN(value) && value > 0) {
-        return {
-          value,
-          color: ARMOR_SLOT_COLORS.totem,
-          source: "totem"
-        };
+    if (totem?.Stats?.Virtue) {
+      // Check if it's an AllVirtues totem
+      if (totem.Stats.Virtue.Type?.toLowerCase() === "allvirtues") {
+        const value = parseFloat(totem.Stats.Virtue.Value);
+        if (!isNaN(value) && value > 0) {
+          contributions.push({
+            value,
+            color: ARMOR_SLOT_COLORS.totem,
+            source: "totem"
+          });
+        }
+      } 
+      // Check for single virtue match
+      else if (totem.Stats.Virtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
+        const value = parseFloat(totem.Stats.Virtue.Value);
+        if (!isNaN(value) && value > 0) {
+          contributions.push({
+            value,
+            color: ARMOR_SLOT_COLORS.totem,
+            source: "totem"
+          });
+        }
       }
     }
     
     // Check pact contribution
     const pact = selectedItems.pact;
-    if (pact?.Stats?.BonusVirtue && 
-        pact.Stats.BonusVirtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
-      const value = parseFloat(pact.Stats.BonusVirtue.Value);
-      if (!isNaN(value) && value > 0) {
-        return {
-          value,
-          color: PACT_COLOR,
-          source: "pact"
-        };
+    if (pact?.Stats?.BonusVirtue) {
+      if (pact.Stats.BonusVirtue.Type?.toLowerCase() === "allvirtues") {
+        const value = parseFloat(pact.Stats.BonusVirtue.Value);
+        if (!isNaN(value) && value > 0) {
+          contributions.push({
+            value,
+            color: PACT_COLOR,
+            source: "pact"
+          });
+        }
+      }
+      else if (pact.Stats.BonusVirtue.Type?.toLowerCase() === virtueType.toLowerCase()) {
+        const value = parseFloat(pact.Stats.BonusVirtue.Value);
+        if (!isNaN(value) && value > 0) {
+          contributions.push({
+            value,
+            color: PACT_COLOR,
+            source: "pact"
+          });
+        }
       }
     }
     
-    return null;
+    // Check motes with virtue bonuses
+    // Process weapons
+    ['primary', 'sidearm'].forEach(weaponSlot => {
+      const weapon = selectedItems[weaponSlot as keyof SelectedItems];
+      if (weapon?.Motes) {
+        weapon.Motes.forEach(mote => {
+          if (mote && typeof mote.Effect === 'string' && mote.Effect.includes(virtueType)) {
+            // Parse virtue value from effect description
+            const match = mote.Effect.match(new RegExp(`${virtueType}\\s*\\+\\s*(\\d+)`, 'i'));
+            if (match && match[1]) {
+              const value = parseInt(match[1], 10);
+              if (!isNaN(value) && value > 0) {
+                contributions.push({
+                  value,
+                  color: '#9333ea', // Purple for motes
+                  source: `${weaponSlot} mote`
+                });
+              }
+            }
+          }
+        });
+      }
+    });
+    
+    // Check pact motes
+    const pactMotes = selectedItems.pact?.Motes;
+    if (pactMotes) {
+      pactMotes.forEach(mote => {
+        if (mote && typeof mote.Effect === 'string' && mote.Effect.includes(virtueType)) {
+          const match = mote.Effect.match(new RegExp(`${virtueType}\\s*\\+\\s*(\\d+)`, 'i'));
+          if (match && match[1]) {
+            const value = parseInt(match[1], 10);
+            if (!isNaN(value) && value > 0) {
+              contributions.push({
+                value,
+                color: '#9333ea', // Purple for motes
+                source: 'pact mote'
+              });
+            }
+          }
+        }
+      });
+    }
+    
+    // Add player virtue points
+    if (virtueType.toLowerCase() === 'grace' && playerVirtues.grace > 0) {
+      contributions.push({
+        value: playerVirtues.grace,
+        color: '#f59e0b', // Amber for player virtues
+        source: 'player'
+      });
+    } 
+    else if (virtueType.toLowerCase() === 'spirit' && playerVirtues.spirit > 0) {
+      contributions.push({
+        value: playerVirtues.spirit,
+        color: '#f59e0b', // Amber for player virtues
+        source: 'player'
+      });
+    }
+    else if (virtueType.toLowerCase() === 'courage' && playerVirtues.courage > 0) {
+      contributions.push({
+        value: playerVirtues.courage,
+        color: '#f59e0b', // Amber for player virtues
+        source: 'player'
+      });
+    }
+    
+    return contributions;
   };
 
   // Calculate special mote effects that aren't virtue bonuses
@@ -525,13 +626,21 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
               />
               Grace
             </div>
-            <div className="text-xl font-bold text-white flex items-center">
+            <div className="text-xl font-bold text-white flex items-center flex-wrap">
               +{formatStatValue(stats.graceValue)}
-              {graceContribution && (
-                <span className="ml-2 text-sm font-normal" style={{color: graceContribution.color}}>
-                  +{graceContribution.value}
-                </span>
-              )}
+              <span className="ml-2 text-sm font-normal flex flex-wrap">
+                {getVirtueContribution('grace').map((contrib, idx) => (
+                  <span 
+                    key={`grace-${idx}`}
+                    style={{color: contrib.color}}
+                    className="ml-1"
+                  >
+                    {idx === 0 ? '(' : ''}
+                    +{contrib.value}
+                    {idx === getVirtueContribution('grace').length - 1 ? ')' : ', '}
+                  </span>
+                ))}
+              </span>
             </div>
           </div>
           <div>
@@ -543,13 +652,21 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
               />
               Spirit
             </div>
-            <div className="text-xl font-bold text-white flex items-center">
+            <div className="text-xl font-bold text-white flex items-center flex-wrap">
               +{formatStatValue(stats.spiritValue)}
-              {spiritContribution && (
-                <span className="ml-2 text-sm font-normal" style={{color: spiritContribution.color}}>
-                  +{spiritContribution.value}
-                </span>
-              )}
+              <span className="ml-2 text-sm font-normal flex flex-wrap">
+                {getVirtueContribution('spirit').map((contrib, idx) => (
+                  <span 
+                    key={`spirit-${idx}`}
+                    style={{color: contrib.color}}
+                    className="ml-1"
+                  >
+                    {idx === 0 ? '(' : ''}
+                    +{contrib.value}
+                    {idx === getVirtueContribution('spirit').length - 1 ? ')' : ', '}
+                  </span>
+                ))}
+              </span>
             </div>
           </div>
           <div>
@@ -561,13 +678,21 @@ const StatsDisplay: React.FC<StatsDisplayProps> = ({ selectedItems }) => {
               />
               Courage
             </div>
-            <div className="text-xl font-bold text-white flex items-center">
+            <div className="text-xl font-bold text-white flex items-center flex-wrap">
               +{formatStatValue(stats.courageValue)}
-              {courageContribution && (
-                <span className="ml-2 text-sm font-normal" style={{color: courageContribution.color}}>
-                  +{courageContribution.value}
-                </span>
-              )}
+              <span className="ml-2 text-sm font-normal flex flex-wrap">
+                {getVirtueContribution('courage').map((contrib, idx) => (
+                  <span 
+                    key={`courage-${idx}`}
+                    style={{color: contrib.color}}
+                    className="ml-1"
+                  >
+                    {idx === 0 ? '(' : ''}
+                    +{contrib.value}
+                    {idx === getVirtueContribution('courage').length - 1 ? ')' : ', '}
+                  </span>
+                ))}
+              </span>
             </div>
           </div>
         </div>

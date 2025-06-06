@@ -57,7 +57,11 @@ const parseStatValue = (value: string | undefined | null): number => {
 };
 
 // Calculate stats from all selected items
-export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: boolean = true): ConsolidatedStats => {
+export function calculateStats(
+  selectedItems: SelectedItems,
+  showPrimaryWeapon: boolean = true,
+  playerVirtues: { grace: number; spirit: number; courage: number } = { grace: 0, spirit: 0, courage: 0 }
+): { [key: string]: any } {
   // Initialize stats with default values
   const stats: ConsolidatedStats = {
     physicalDefence: 0,
@@ -354,6 +358,96 @@ export const calculateStats = (selectedItems: SelectedItems, showPrimaryWeapon: 
       }
     }
   }
+
+  // Modify virtue calculations to include player virtue points
+  let graceValue = playerVirtues.grace || 0;
+  let spiritValue = playerVirtues.spirit || 0;
+  let courageValue = playerVirtues.courage || 0;
+
+  // Check totem for virtue bonus
+  if (selectedItems.totem?.Stats?.Virtue) {
+    const virtueType = selectedItems.totem.Stats.Virtue.Type?.toLowerCase();
+    const virtueValue = parseFloat(selectedItems.totem.Stats.Virtue.Value || '0');
+
+    if (virtueType === 'grace' || virtueType === 'allvirtues') {
+      graceValue += virtueValue;
+    }
+    if (virtueType === 'spirit' || virtueType === 'allvirtues') {
+      spiritValue += virtueValue;
+    }
+    if (virtueType === 'courage' || virtueType === 'allvirtues') {
+      courageValue += virtueValue;
+    }
+  }
+
+  // Check pact for virtue bonus
+  if (pact?.Stats?.BonusVirtue) {
+    const virtueType = pact.Stats.BonusVirtue.Type?.toLowerCase();
+    const virtueValue = parseFloat(pact.Stats.BonusVirtue.Value || '0');
+
+    if (virtueType === 'grace' || virtueType === 'allvirtues') {
+      graceValue += virtueValue;
+    }
+    if (virtueType === 'spirit' || virtueType === 'allvirtues') {
+      spiritValue += virtueValue;
+    }
+    if (virtueType === 'courage' || virtueType === 'allvirtues') {
+      courageValue += virtueValue;
+    }
+  }
+
+  // Process weapon motes for virtue bonuses
+  for (const weaponSlot of ['primary', 'sidearm']) {
+    const weapon = selectedItems[weaponSlot as keyof SelectedItems];
+    if (weapon?.Motes) {
+      weapon.Motes.forEach(mote => {
+        if (mote && typeof mote.Effect === 'string') {
+          // Look for virtue bonuses in mote effects
+          const graceMatch = mote.Effect.match(/Grace\s*\+\s*(\d+)/i);
+          if (graceMatch && graceMatch[1]) {
+            graceValue += parseInt(graceMatch[1], 10);
+          }
+
+          const spiritMatch = mote.Effect.match(/Spirit\s*\+\s*(\d+)/i);
+          if (spiritMatch && spiritMatch[1]) {
+            spiritValue += parseInt(spiritMatch[1], 10);
+          }
+
+          const courageMatch = mote.Effect.match(/Courage\s*\+\s*(\d+)/i);
+          if (courageMatch && courageMatch[1]) {
+            courageValue += parseInt(courageMatch[1], 10);
+          }
+        }
+      });
+    }
+  }
+
+  // Process pact motes for virtue bonuses
+  if (pact?.Motes) {
+    pact.Motes.forEach(mote => {
+      if (mote && typeof mote.Effect === 'string') {
+        const graceMatch = mote.Effect.match(/Grace\s*\+\s*(\d+)/i);
+        if (graceMatch && graceMatch[1]) {
+          graceValue += parseInt(graceMatch[1], 10);
+        }
+
+        const spiritMatch = mote.Effect.match(/Spirit\s*\+\s*(\d+)/i);
+        if (spiritMatch && spiritMatch[1]) {
+          spiritValue += parseInt(spiritMatch[1], 10);
+        }
+
+        const courageMatch = mote.Effect.match(/Courage\s*\+\s*(\d+)/i);
+        if (courageMatch && courageMatch[1]) {
+          courageValue += parseInt(courageMatch[1], 10);
+        }
+      }
+    });
+  }
+
+  // Assign calculated virtue values to stats
+  stats.graceValue = graceValue;
+  stats.spiritValue = spiritValue;
+  stats.courageValue = courageValue;
 
   console.log("calculateStats: Final calculated stats", stats);
 
